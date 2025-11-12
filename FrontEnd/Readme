@@ -1,0 +1,38 @@
+# 开发迭代报告
+## 2025/11/13 王煜鹏
+
+### 构建前端方式
+- 进入FrontEnd文件夹
+- （确认安装好npm）运行`npm install`下载依赖包。
+- 运行`npm run dev`
+
+### 代码结构
+本项目前端（FrontEnd）采用 React + Vite + TypeScript 构建，目录结构按功能与职责划分，便于开发与维护。下面是各目录/文件的说明：
+
+- `index.html`：应用入口 HTML 模板，Vite 在开发/构建时使用。
+- `package.json`：npm 脚本、依赖和工程元数据。
+- `vite.config.ts`：Vite 构建与开发服务器配置。
+
+- `src/`：应用源码主目录。
+	- `main.tsx`：应用启动文件，负责挂载 React 根组件并注入全局样式/上下文。
+	- `App.tsx`：全局路由与页面骨架（若使用路由，可在此处配置）。
+	- `assets/`：静态资源（图片、图标等）。
+	- `components/`：可复用 UI 组件，例如 `loginComp.tsx`（登录相关组件）。
+	- `pages/`：页面级组件，每个页面对应一个视图（例如 `HomePage.tsx`、`LoginPage.tsx`、`SignUpPage.tsx`）。
+	- `contexts/`：React 上下文（Context）实现与提供者，例如 `AuthContext.tsx` 用于用户认证状态管理。
+	- `hooks/`：自定义 Hook，例如 `userAuth.tsx` 封装的认证逻辑与复用函数。
+	- `styles/`：全局与页面样式（例如 `index.css`、`App.css`）。
+
+- `public/`：放置不经过构建处理的静态文件，构建时会直接拷贝到最终产物中。
+
+- 构建与配置文件：
+	- `tsconfig.*.json`：TypeScript 配置（不同场景的 tsconfig）。
+	- `tailwind.config.js` / `postcss.config.js`：Tailwind CSS 与 PostCSS 配置（如使用 Tailwind）。
+	- `eslint.config.js`：ESLint 配置，用于代码质量与风格校验。
+
+示例约定与开发指南：
+- 页面放在 `src/pages`，按路由命名；复用组件放 `src/components`；与业务逻辑强耦合的小模块可在 `src/pages/<PageName>/` 进一步拆分。
+- 状态管理：轻量状态建议使用 Context + 自定义 Hook；若需要更复杂的状态管理，可引入 Redux / Zustand 等。
+- 样式：使用 `src/styles` 放置全局样式，组件样式可与组件同目录或使用 CSS Modules / Tailwind 原子类。（预定）
+
+
