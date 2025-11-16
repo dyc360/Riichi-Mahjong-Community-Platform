@@ -150,3 +150,39 @@ export function PolicyFooter() {
 		</footer>
 	)
 }
+
+type SocialProvider = {
+  id: string
+  label: string
+}
+
+const SOCIAL_PROVIDERS: SocialProvider[] = [
+  { id: 'apple', label: 'Apple' },
+  { id: 'google', label: 'Google' },
+  { id: 'linkedin', label: 'LinkedIn' },
+]
+
+
+// Displays placeholder single-sign-on options using a data-driven layout.
+export function SocialLogin() {
+  return (
+    <div className="mt-8 space-y-4">
+      <div className="flex items-center gap-3 text-xs text-slate-500">
+        <span className="h-px flex-1 bg-slate-700" />
+        或使用以下方式继续
+        <span className="h-px flex-1 bg-slate-700" />
+      </div>
+      <div className="grid grid-cols-3 gap-3 text-xs font-medium text-slate-300">
+        {SOCIAL_PROVIDERS.map((provider) => (
+          <button
+            key={provider.id}
+            type="button"
+            className="flex items-center justify-center gap-2 rounded-xl border border-slate-700/70 bg-slate-950/70 px-3 py-2 transition hover:border-indigo-400/60 hover:text-white"
+          >
+            {provider.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
