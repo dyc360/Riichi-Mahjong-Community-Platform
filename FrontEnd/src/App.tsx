@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate} from "react-router-dom"
 import LoginPage from "./pages/LoginPage"
 import SignUpPage from "./pages/SignUpPage"
+import LoginPage_Admin from "./pages/LoginPage_Admin"
 import "./styles/App.css"
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
@@ -9,10 +10,14 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* 默认重定向到登录页 */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
         {/* 登录页 */}
-        <Route path="/" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage />} />
         {/* 注册页 */}
         <Route path="/signup" element={<SignUpPage />} />
+        {/* 管理员登录页 */}
+        <Route path="/login/admin" element={<LoginPage_Admin />} />
         {/* 首页 */}
         {/* <Route path="/" element={<HomePage />} /> */}
         {/* 个人中心 */}
