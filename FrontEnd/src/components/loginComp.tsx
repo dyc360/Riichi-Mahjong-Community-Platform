@@ -1,5 +1,6 @@
 import { type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { useTheme} from '../contexts/ThemeContext'
 
 export type PasswordFieldProps = {
   id: string
@@ -30,13 +31,13 @@ export function PasswordField({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
-        <label className="font-medium text-slate-200" htmlFor={id}>
+        <label className="font-medium dark:text-slate-200 light:text-slate-700" htmlFor={id}>
           {label}
         </label>
         <button
           type="button"
           onClick={onToggleReveal}
-          className="font-medium text-indigo-300 transition hover:text-indigo-200"
+          className="font-medium dark:text-indigo-300 text-indigo-500 transition hover:text-indigo-200"
         >
           {revealed ? '隐藏' : '显示'}
         </button>
@@ -60,10 +61,27 @@ export function PasswordField({
   )
 }
 
+// 主题切换按钮组件
+export function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  return (
+    <button
+      onClick={toggleTheme}
+      className="absolute right-4 top-4 rounded-full p-2 text-sm font-medium transition-colors hover:bg-slate-800/50 dark:hover:bg-white/10"
+      aria-label={theme === 'light' ? '切换到深色模式' : '切换到浅色模式'}
+    >
+      {theme === 'light' ? '🌙 深色' : '☀️ 浅色'}
+    </button>
+  );
+}
+
 // Shows the MajHub badge so the page always feels branded.
 export function BrandHeader() {
   return (
     <header className="flex items-center gap-3 px-8 py-6">
+      {/*主题切换按钮*/}
+      <ThemeToggle />
+
       <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500 text-lg font-bold text-white shadow-glow">
         MH
       </div>
@@ -71,7 +89,7 @@ export function BrandHeader() {
         <span className="text-sm font-semibold uppercase tracking-[0.3em] text-indigo-300">
           MajHub
         </span>
-        <span className="text-base text-slate-300">立直麻将社区</span>
+        <span className="text-base dark:text-slate-300 light:text-slate-700">立直麻将社区</span>
       </div>
     </header>
   )
@@ -93,10 +111,10 @@ export function HeroSection({
         <span className="h-2 w-2 rounded-full bg-indigo-400" />
         Secure Portal
       </p> */}
-      <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+      <h1 className="text-3xl font-semibold tracking-tight dark:text-white light:text-slate-900 sm:text-4xl">
         {welcomeMessage}
       </h1>
-      <p className="text-sm text-slate-400">
+      <p className="text-sm secondary">
         {suggestionText}
       </p>
     </div>
@@ -107,9 +125,9 @@ export function HeroSection({
 export function BackgroundGlow() {
   return (
     <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden">
-      <div className="absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-indigo-500/30 blur-3xl" />
-      <div className="absolute bottom-0 left-0 h-72 w-72 -translate-x-1/3 translate-y-1/3 rounded-full bg-purple-500/20 blur-3xl" />
-      <div className="absolute bottom-20 right-0 h-64 w-64 translate-x-1/3 rounded-full bg-blue-500/20 blur-3xl" />
+      <div className="absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-indigo-500/30 dark:bg-indigo-500/30 light:bg-indigo-300/30 blur-3xl" />
+      <div className="absolute bottom-0 left-0 h-72 w-72 -translate-x-1/3 translate-y-1/3 rounded-full bg-purple-500/20 dark:bg-purple-500/20 light:bg-purple-300/20 blur-3xl" />
+      <div className="absolute bottom-20 right-0 h-64 w-64 translate-x-1/3 rounded-full bg-blue-500/20 dark:bg-blue-500/20 light:bg-blue-300/20 blur-3xl" />
     </div>
   )
 }
@@ -127,7 +145,7 @@ export function Prompt({
   return (
     <p className="text-center text-xs text-slate-500">
       {question}
-      <Link className="ml-2 font-medium text-indigo-300 hover:text-indigo-200" to={linkTo}>
+      <Link className="ml-2 font-medium dark:text-indigo-300 text-indigo-500 hover:text-indigo-200" to={linkTo}>
         {linkText}
       </Link>
     </p>
