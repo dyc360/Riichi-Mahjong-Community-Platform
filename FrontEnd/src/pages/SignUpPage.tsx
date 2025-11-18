@@ -140,7 +140,7 @@ function SignUpForm({
 		<div className="rounded-3xl border border-slate-800/60 bg-slate-900/70 p-8 shadow-glow backdrop-blur">
 			<form className="space-y-6" onSubmit={onSubmit}>
 				<div className="space-y-2">
-					<label className="text-sm font-medium text-slate-200" htmlFor="username">
+					<label className="text-sm font-medium dark:text-slate-200 light:text-slate-700" htmlFor="username">
 						用户名
 					</label>
 					<input
@@ -156,7 +156,7 @@ function SignUpForm({
 				</div>
 
 				<div className="space-y-2">
-					<label className="text-sm font-medium text-slate-200" htmlFor="email">
+					<label className="text-sm font-medium dark:text-slate-200 light:text-slate-700" htmlFor="email">
 						邮箱
 					</label>
 					<input
@@ -269,7 +269,9 @@ function SignUpPage() {
 	} = useSignUpForm()
 
 	return (
-		<div className="relative flex min-h-screen flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
+		<div className="relative flex min-h-screen flex-col 
+		  dark:bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 
+		  light:bg-gradient-to-br from-gray-50 via-gray-100 to-indigo-100">
 			<BackgroundGlow />
 			<BrandHeader />
 

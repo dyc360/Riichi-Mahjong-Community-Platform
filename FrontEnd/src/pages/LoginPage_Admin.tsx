@@ -120,7 +120,7 @@ function LoginForm({
     <div className="rounded-3xl border border-slate-800/60 bg-slate-900/70 p-8 shadow-glow backdrop-blur">
       <form className="space-y-6" onSubmit={onSubmit}>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-200" htmlFor="admin_number">
+          <label className="text-sm font-medium dark:text-slate-200 light:text-slate-700" htmlFor="admin_number">
             管理员编号
           </label>
           <input
@@ -146,7 +146,7 @@ function LoginForm({
           autoComplete="current-password"
         />
 
-        <div className="flex items-center justify-between text-sm text-slate-300">
+        <div className="flex items-center justify-between text-sm">
           <label className="inline-flex items-center gap-2">
             <input
               type="checkbox"
@@ -154,9 +154,9 @@ function LoginForm({
               onChange={onRememberChange}
               className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-indigo-400 focus:ring-indigo-400/70"
             />
-            记住我
+            <span className="font-medium dark:text-slate-200 light:text-slate-700">记住我</span>
           </label>
-          <a className="font-medium text-indigo-300 hover:text-indigo-200" href="#">
+          <a className="font-medium dark:text-indigo-300 text-indigo-500 hover:text-indigo-200" href="#">
             忘记密码？
           </a>
         </div>
@@ -189,7 +189,9 @@ function LoginPage_Admin() {
   } = useLoginForm()
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
+    <div className="relative flex min-h-screen flex-col 
+      dark:bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 
+      light:bg-gradient-to-br from-gray-50 via-gray-100 to-indigo-100">
       <BackgroundGlow />
       <BrandHeader />
 
