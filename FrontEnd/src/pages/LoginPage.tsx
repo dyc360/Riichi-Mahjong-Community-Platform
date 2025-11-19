@@ -118,10 +118,10 @@ function LoginForm({
   onTogglePasswordVisibility,
 }: LoginFormProps) {
   return (
-    <div className="login-card rounded-3xl border border-slate-800/60 bg-slate-900/70 p-8 shadow-glow backdrop-blur">
+    <div className="login-card rounded-3xl border p-8 shadow-glow backdrop-blur">
       <form className="space-y-6" onSubmit={onSubmit}>
         <div className="space-y-2">
-          <label className="text-sm font-medium dark:text-slate-200 light:text-slate-700" htmlFor="email">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="email">
             邮箱
           </label>
           <input
@@ -131,7 +131,7 @@ function LoginForm({
             autoComplete="email"
             value={form.email}
             onChange={onEmailChange}
-            className="auth-input w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
+            className="auth-input w-full rounded-xl border px-4 py-3 text-sm placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
             placeholder="you@example.com"
           />
         </div>
@@ -147,15 +147,15 @@ function LoginForm({
           autoComplete="current-password"
         />
 
-        <div className="flex items-center justify-between text-sm dark:text-slate-300 light:text-slate-700">
-          <label className="font-medium dark:text-slate-200 light:text-slate-700">
+        <div className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-300">
+          <label className="font-medium text-slate-700 dark:text-slate-200">
             <input
               type="checkbox"
               checked={form.remember}
               onChange={onRememberChange}
               className="h-4 w-4 rounded text-indigo-400 focus:ring-indigo-400/70"
             />
-            <span className="font-medium dark:text-slate-200 light:text-slate-700">记住我</span>
+            <span className="font-medium text-slate-700 dark:text-slate-200">记住我</span>
           </label>
           <a className="font-medium dark:text-indigo-300 text-indigo-500 hover:text-indigo-200" href="#">
             忘记密码？
@@ -193,8 +193,8 @@ function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col 
-      dark:bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 
-      light:bg-gradient-to-br from-gray-50 via-gray-100 to-indigo-100">
+      bg-gradient-to-br from-gray-50 via-gray-100 to-indigo-100
+      dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
       <BackgroundGlow />
       <BrandHeader />
 

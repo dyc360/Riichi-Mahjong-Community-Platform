@@ -23,13 +23,13 @@ function App() {
         {/* 管理员登录页 */}
         <Route path="/login/admin" element={<LoginPage_Admin />} />
         {/* 首页 */}
-        <Route path="/homepage" element={<HomePage />} /> 
+        <Route path="/home" element={<HomePage />} /> 
         {/* 新闻浏览 */}
         {/* <Route path="/news" element={<NewsPage />} /> */}
         {/* 论坛交流 */}
         {/* <Route path="/forum" element={<ForumPage />} /> */}
         {/* 何切练习 */}
-        {/* <Route path="/practice" element={<PracticePage />} /> */}
+        <Route path="/practice" element={<PracticePage />} />
         {/* 个人中心 */}
         {/* <Route path="/profile" element={<ProfilePage />} /> */}
       </Routes>
