@@ -3,6 +3,9 @@ import LoginPage from "./pages/LoginPage"
 import SignUpPage from "./pages/SignUpPage"
 import LoginPage_Admin from "./pages/LoginPage_Admin"
 import HomePage from "./pages/HomePage"
+import NewsPage from "./pages/NewsPage"
+import ForumPage from "./pages/ForumPage"
+import PracticePage from "./pages/PracticePage"
 import "./styles/App.css"
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
@@ -21,6 +24,12 @@ function App() {
         <Route path="/login/admin" element={<LoginPage_Admin />} />
         {/* 首页 */}
         <Route path="/homepage" element={<HomePage />} /> 
+        {/* 新闻浏览 */}
+        {/* <Route path="/news" element={<NewsPage />} /> */}
+        {/* 论坛交流 */}
+        {/* <Route path="/forum" element={<ForumPage />} /> */}
+        {/* 何切练习 */}
+        {/* <Route path="/practice" element={<PracticePage />} /> */}
         {/* 个人中心 */}
         {/* <Route path="/profile" element={<ProfilePage />} /> */}
       </Routes>
