@@ -55,9 +55,6 @@
   #root {
     @apply min-h-screen;
   }
-  body {
-    @apply m-0 min-h-screen antialiased transition-colors duration-300;
-  }
   
   .light .bg-slate-900\/70 {
     @apply bg-white/70;
