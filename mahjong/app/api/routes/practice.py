@@ -1,20 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
+from sqlalchemy.orm import Session
 from app.core.mahjong_ai import mahjong_ai
 from app.api.dependencies import get_current_user
 from app.models.user import UserInDB
+from app.services.user_service import get_user_service
+from app.config.database import get_db
 
 router = APIRouter()
 
+
 @router.post("/calculate-tiles")
 async def calculate_tiles(
-    data: Dict[str, Any],
-    current_user: UserInDB = Depends(get_current_user)
+        data: Dict[str, Any],
+        current_user: UserInDB = Depends(get_current_user),
+        db: Session = Depends(get_db)
 ):
     hand_tiles = data.get("hand_tiles")
     if not hand_tiles or len(hand_tiles) != 13:
         raise HTTPException(status_code=400, detail="请输入13张手牌")
-    
+
     try:
         result = mahjong_ai.calculate_waiting_tiles(hand_tiles)
         return {
@@ -24,26 +29,29 @@ async def calculate_tiles(
     except Exception as e:
         raise HTTPException(status_code=500, detail="计算失败")
 
+
 @router.post("/efficiency-practice")
 async def efficiency_practice(
-    data: Dict[str, Any],
-    current_user: UserInDB = Depends(get_current_user)
+        data: Dict[str, Any],
+        current_user: UserInDB = Depends(get_current_user),
+        db: Session = Depends(get_db)
 ):
     hand_tiles = data.get("hand_tiles")
     drawn_tile = data.get("drawn_tile")
     discarded_tile = data.get("discarded_tile")
-    
+
     if not all([hand_tiles, drawn_tile, discarded_tile]):
         raise HTTPException(status_code=400, detail="缺少必要参数")
-    
+
     try:
         analysis = mahjong_ai.analyze_efficiency(hand_tiles, drawn_tile)
         is_correct = analysis["best_discard"] == discarded_tile
-        
+
         # 更新用户练习数据
+        user_service = get_user_service(db)
         if current_user:
-            await user_service.update_user_stats(str(current_user.id), is_correct)
-        
+            await user_service.update_user_stats(current_user.id, is_correct)
+
         return {
             "success": True,
             "data": analysis,
@@ -52,6 +60,7 @@ async def efficiency_practice(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail="分析失败")
+
 
 @router.get("/check-ready")
 async def check_ready_hand(hand_tiles: str):

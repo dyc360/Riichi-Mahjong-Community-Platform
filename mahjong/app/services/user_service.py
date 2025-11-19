@@ -1,16 +1,16 @@
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
-from bson import ObjectId
+from sqlalchemy.orm import Session
 from passlib.context import CryptContext
-from app.models.user import UserCreate, UserUpdate, UserInDB, UserResponse
-from app.core.database import get_database
+from app.models.user_models import User
+from app.models.user import UserCreate, UserInDB
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 class UserService:
-    def __init__(self):
-        self.db = get_database()
-        self.collection = self.db.users
+    def __init__(self, db: Session):
+        self.db = db
 
     def get_password_hash(self, password: str) -> str:
         return pwd_context.hash(password)
@@ -18,60 +18,98 @@ class UserService:
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         return pwd_context.verify(plain_password, hashed_password)
 
-    async def create_user(self, user: UserCreate) -> UserInDB:
+    async def create_user(self, user_data: UserCreate) -> UserInDB:
         # 检查用户是否存在
-        if await self.collection.find_one({"email": user.email}):
+        if self.db.query(User).filter(User.email == user_data.email).first():
             raise ValueError("用户邮箱已存在")
-        
-        if await self.collection.find_one({"username": user.username}):
+
+        if self.db.query(User).filter(User.username == user_data.username).first():
             raise ValueError("用户名已存在")
 
-        user_dict = user.dict()
-        user_dict["password_hash"] = self.get_password_hash(user.password)
-        user_dict.pop("password", None)
-        user_dict["created_at"] = datetime.utcnow()
-        user_dict["updated_at"] = datetime.utcnow()
+        # 创建用户
+        user = User(
+            username=user_data.username,
+            email=user_data.email,
+            password_hash=self.get_password_hash(user_data.password),
+            phone=user_data.phone,
+            avatar=user_data.avatar,
+            level=user_data.level,
+            points=user_data.points,
+            rank=user_data.rank,
+            is_admin=user_data.is_admin
+        )
 
-        result = await self.collection.insert_one(user_dict)
-        created_user = await self.collection.find_one({"_id": result.inserted_id})
-        return UserInDB(**created_user)
+        self.db.add(user)
+        self.db.commit()
+        self.db.refresh(user)
+
+        return UserInDB(
+            id=str(user.id),
+            username=user.username,
+            email=user.email,
+            phone=user.phone,
+            avatar=user.avatar,
+            level=user.level,
+            points=user.points,
+            rank=user.rank,
+            is_admin=user.is_admin,
+            is_active=user.is_active,
+            password_hash=user.password_hash,
+            total_practices=user.total_practices,
+            correct_answers=user.correct_answers,
+            average_score=user.average_score,
+            last_login=user.last_login,
+            created_at=user.created_at,
+            updated_at=user.updated_at
+        )
 
     async def get_user_by_email(self, email: str) -> Optional[UserInDB]:
-        user = await self.collection.find_one({"email": email})
+        user = self.db.query(User).filter(User.email == email).first()
         if user:
-            return UserInDB(**user)
+            return UserInDB(
+                id=str(user.id),
+                username=user.username,
+                email=user.email,
+                phone=user.phone,
+                avatar=user.avatar,
+                level=user.level,
+                points=user.points,
+                rank=user.rank,
+                is_admin=user.is_admin,
+                is_active=user.is_active,
+                password_hash=user.password_hash,
+                total_practices=user.total_practices,
+                correct_answers=user.correct_answers,
+                average_score=user.average_score,
+                last_login=user.last_login,
+                created_at=user.created_at,
+                updated_at=user.updated_at
+            )
         return None
 
     async def get_user_by_id(self, user_id: str) -> Optional[UserInDB]:
-        user = await self.collection.find_one({"_id": ObjectId(user_id)})
+        user = self.db.query(User).filter(User.id == user_id).first()
         if user:
-            return UserInDB(**user)
-        return None
-
-    async def update_user(self, user_id: str, user_update: UserUpdate) -> Optional[UserInDB]:
-        update_data = {k: v for k, v in user_update.dict().items() if v is not None}
-        if update_data:
-            update_data["updated_at"] = datetime.utcnow()
-            await self.collection.update_one(
-                {"_id": ObjectId(user_id)}, 
-                {"$set": update_data}
+            return UserInDB(
+                id=str(user.id),
+                username=user.username,
+                email=user.email,
+                phone=user.phone,
+                avatar=user.avatar,
+                level=user.level,
+                points=user.points,
+                rank=user.rank,
+                is_admin=user.is_admin,
+                is_active=user.is_active,
+                password_hash=user.password_hash,
+                total_practices=user.total_practices,
+                correct_answers=user.correct_answers,
+                average_score=user.average_score,
+                last_login=user.last_login,
+                created_at=user.created_at,
+                updated_at=user.updated_at
             )
-        
-        return await self.get_user_by_id(user_id)
-
-    async def update_user_stats(self, user_id: str, correct: bool = True):
-        update_data = {
-            "updated_at": datetime.utcnow(),
-            "$inc": {"practice_stats.total_practices": 1}
-        }
-        
-        if correct:
-            update_data["$inc"]["practice_stats.correct_answers"] = 1
-        
-        await self.collection.update_one(
-            {"_id": ObjectId(user_id)}, 
-            update_data
-        )
+        return None
 
     async def authenticate_user(self, email: str, password: str) -> Optional[UserInDB]:
         user = await self.get_user_by_email(email)
@@ -79,13 +117,22 @@ class UserService:
             return None
         if not self.verify_password(password, user.password_hash):
             return None
-        
+
         # 更新最后登录时间
-        await self.collection.update_one(
-            {"_id": ObjectId(user.id)}, 
-            {"$set": {"last_login": datetime.utcnow()}}
-        )
-        
+        db_user = self.db.query(User).filter(User.id == user.id).first()
+        db_user.last_login = datetime.utcnow()
+        self.db.commit()
+
         return user
 
-user_service = UserService()
+    async def update_user_stats(self, user_id: str, correct: bool = True):
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if user:
+            user.total_practices += 1
+            if correct:
+                user.correct_answers += 1
+            self.db.commit()
+
+
+def get_user_service(db: Session) -> UserService:
+    return UserService(db)

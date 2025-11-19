@@ -1,8 +1,6 @@
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
-from bson import ObjectId
-from .user import PyObjectId
 
 class PostBase(BaseModel):
     title: str
@@ -22,19 +20,6 @@ class PostUpdate(BaseModel):
     tiles: Optional[List[str]] = None
     is_solved: Optional[bool] = None
 
-class PostInDB(PostBase):
-    id: PyObjectId
-    author: PyObjectId
-    like_count: int = 0
-    comment_count: int = 0
-    view_count: int = 0
-    is_solved: bool = False
-    created_at: datetime
-    updated_at: datetime
-    
-    class Config:
-        json_encoders = {ObjectId: str}
-
 class PostResponse(PostBase):
     id: str
     author: str
@@ -44,6 +29,3 @@ class PostResponse(PostBase):
     view_count: int
     is_solved: bool
     created_at: datetime
-    
-    class Config:
-        json_encoders = {ObjectId: str}

@@ -1,16 +1,25 @@
-from motor.motor_asyncio import AsyncIOMotorClient
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 from app.config.settings import settings
 
-class Database:
-    client: AsyncIOMotorClient = None
+# MySQL 连接 URL
+SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
 
-db = Database()
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=300,
+)
 
-async def get_database():
-    return db.client[settings.MONGODB_DB_NAME]
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-async def connect_to_mongo():
-    db.client = AsyncIOMotorClient(settings.MONGODB_URL)
-    
-async def close_mongo_connection():
-    db.client.close()
+Base = declarative_base()
+
+# 依赖注入用的数据库会话
+async def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
