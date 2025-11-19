@@ -65,10 +65,7 @@ export function PasswordField({
 // Shows the MajHub badge so the page always feels branded.
 export function BrandHeader() {
   return (
-    <header className="flex items-center gap-3 px-8 py-6">
-      {/*主题切换按钮*/}
-      <ThemeToggle />
-
+    <header className="flex items-center gap-3 px-8 py-6 relative">
       <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500 text-lg font-bold text-white shadow-glow">
         MH
       </div>
@@ -77,6 +74,10 @@ export function BrandHeader() {
           MajHub
         </span>
         <span className="text-base text-slate-700 dark:text-slate-300">立直麻将社区</span>
+      </div>
+      {/*主题切换按钮*/}
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
       </div>
     </header>
   )
