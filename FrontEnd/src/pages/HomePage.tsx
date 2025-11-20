@@ -2,21 +2,16 @@ import { Link, useLocation } from 'react-router-dom'
 // import { type ChangeEvent, type FormEvent, useMemo, useState } from 'react'
 import {HomePageHeader} from '../components/homePageComp'
 import { useTheme } from '../contexts/ThemeContext';
-import { NewsSubModule, ModuleContainer, ProNews, TeamRank, GameInfoCard, ForumTopicRank, PracticeCard } from '../components/homePageComp'
+import { NewsSubModule, ModuleContainer, ProNews, TeamRank, GameInfoCard, ForumTopicRank, PracticeCard, MainNavigation } from '../components/homePageComp'
 
 export default function HomePage() {
   return (
     <>
       <HomePageHeader />
       {/* Add more content for the home page here */}
-      {/* 顶部引导导航 */}
+      {/* 导航栏 - 使用复用组件 */}
       <nav className="container mx-auto px-4 py-4 border-b border-gray-200 dark:border-slate-700">
-        <div className="flex flex-wrap gap-2">
-          <NavItem label="首页" path="/home" />
-          <NavItem label="新闻浏览" path="/news" />
-          <NavItem label="论坛交流" path="/forum" />
-          <NavItem label="何切练习" path="/practice" />
-        </div>
+        <MainNavigation />
       </nav>
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -165,6 +160,7 @@ const PracticeModule = () => (
             description="计算给出的手牌的点数，提升算分速度。" 
             difficulty="Medium" 
             count={85} 
+            link="/practice/point-calculation"
         />
         <PracticeCard 
             title="清一色训练" 
