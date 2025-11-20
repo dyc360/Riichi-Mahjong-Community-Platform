@@ -38,71 +38,130 @@ const SOCIAL_PROVIDERS: SocialProvider[] = [
 
 // Centralises sign-up state and handlers so the view stays lean.
 function useSignUpForm(): UseSignUpFormResult {
-	const [form, setForm] = useState<FormState>({
-		email: '',
-		username: '',
-		password: '',
-		passwordConfirm: '',
-	})
-	const [isSubmitting, setIsSubmitting] = useState(false)
-	const [showPassword, setShowPassword] = useState(false)
-	const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
+  const [form, setForm] = useState<FormState>({
+    email: '',
+    username: '',
+    password: '',
+    passwordConfirm: '',
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
 
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault()
-		setIsSubmitting(true)
-		// Simulate a request lifecycle for the demo screen.
-		setTimeout(() => setIsSubmitting(false), 1200)
-	}
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
 
-	const handleEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
-		setForm((prev) => ({ ...prev, email: event.target.value }))
-	}
+    // 检查密码是否匹配
+    if (form.password !== form.passwordConfirm) {
+      alert('两次输入的密码不一致')
+      return
+    }
 
-	const handleUsernameChange = (event: ChangeEvent<HTMLInputElement>) => {
-		setForm((prev) => ({ ...prev, username: event.target.value }))
-	}
+    setIsSubmitting(true)
 
-	const handlePasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
-		setForm((prev) => ({ ...prev, password: event.target.value }))
-	}
+    try {
+      console.log('开始注册请求...', form);
 
-	const handlePasswordConfirmChange = (event: ChangeEvent<HTMLInputElement>) => {
-		setForm((prev) => ({ ...prev, passwordConfirm: event.target.value }))
-	}
+      const response = await fetch('http://localhost:8000/api/auth/register/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: form.username,
+          email: form.email,
+          password: form.password,
+          password_confirm: form.passwordConfirm, // 注意后端字段名是 password_confirm
+        }),
+      });
 
-	const togglePasswordVisibility = () => {
-		setShowPassword((prev) => !prev)
-	}
+      console.log('注册响应状态:', response.status);
 
-	const togglePasswordConfirmVisibility = () => {
-		setShowPasswordConfirm((prev) => !prev)
-	}
+      // 先读取响应文本
+      const responseText = await response.text();
+      console.log('注册响应文本:', responseText);
 
-	const passwordsMatch = useMemo(
-		() =>
-			form.password.length > 0 &&
-			form.passwordConfirm.length > 0 &&
-			form.password === form.passwordConfirm,
-		[form.password, form.passwordConfirm],
-	)
+      if (!response.ok) {
+        // 尝试解析错误信息
+        let errorMessage = '注册失败';
+        if (responseText) {
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.message || errorData.errors || errorMessage;
+          } catch (e) {
+            errorMessage = responseText;
+          }
+        }
+        throw new Error(errorMessage);
+      }
 
-	return {
-		form,
-		isSubmitting,
-		showPassword,
-		showPasswordConfirm,
-		passwordsMatch,
-		handleSubmit,
-		handleEmailChange,
-		handleUsernameChange,
-		handlePasswordChange,
-		handlePasswordConfirmChange,
-		togglePasswordVisibility,
-		togglePasswordConfirmVisibility,
-	}
+      // 解析成功响应
+      const data = JSON.parse(responseText);
+      console.log('注册成功:', data);
+
+      if (data.success) {
+        alert('注册成功！请登录');
+        // 跳转到登录页面
+        window.location.href = '/login';
+      } else {
+        throw new Error(data.message || '注册失败');
+      }
+    } catch (err) {
+      console.error('注册错误:', err);
+      alert(err instanceof Error ? err.message : '注册失败，请重试');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // ... 其他函数保持不变
+  const handleEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, email: event.target.value }))
+  }
+
+  const handleUsernameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, username: event.target.value }))
+  }
+
+  const handlePasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, password: event.target.value }))
+  }
+
+  const handlePasswordConfirmChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, passwordConfirm: event.target.value }))
+  }
+
+  const togglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev)
+  }
+
+  const togglePasswordConfirmVisibility = () => {
+    setShowPasswordConfirm((prev) => !prev)
+  }
+
+  const passwordsMatch = useMemo(
+    () =>
+      form.password.length > 0 &&
+      form.passwordConfirm.length > 0 &&
+      form.password === form.passwordConfirm,
+    [form.password, form.passwordConfirm],
+  )
+
+  return {
+    form,
+    isSubmitting,
+    showPassword,
+    showPasswordConfirm,
+    passwordsMatch,
+    handleSubmit,
+    handleEmailChange,
+    handleUsernameChange,
+    handlePasswordChange,
+    handlePasswordConfirmChange,
+    togglePasswordVisibility,
+    togglePasswordConfirmVisibility,
+  }
 }
-
 type SignUpFormProps = {
 	form: FormState
 	isSubmitting: boolean
@@ -234,18 +293,6 @@ function SocialLogin() {
 				))}
 			</div>
 		</div>
-	)
-}
-
-// Provides a path back to the login experience for existing users.
-function AlreadyHaveAccount() {
-	return (
-		<p className="text-center text-xs text-slate-500">
-			已有账号？
-			<Link className="ml-2 font-medium text-indigo-300 hover:text-indigo-200" to="/">
-				返回登录
-			</Link>
-		</p>
 	)
 }
 

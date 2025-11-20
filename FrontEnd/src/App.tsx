@@ -9,6 +9,7 @@ import ProfilePage from "./pages/ProfilePage"
 import PracticePage from "./pages/PracticePage"
 import PointCalculationPage from "./pages/PointCalculationPage"
 import "./styles/App.css"
+import { AuthProvider } from './contexts/AuthContext';
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
 
@@ -25,7 +26,8 @@ function App() {
         {/* 管理员登录页 */}
         <Route path="/login/admin" element={<LoginPage_Admin />} />
         {/* 首页 */}
-        <Route path="/home" element={<HomePage />} /> 
+        <Route path="/home" element={<HomePage />} />
+        {/* <Route path="/homePage" element={<HomePage />} /> */}
         {/* 新闻浏览 */}
         {/* <Route path="/news" element={<NewsPage />} /> */}
         {/* 论坛交流 */}
