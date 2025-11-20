@@ -4,11 +4,18 @@ import { HomePageHeader } from '../components/homePageComp'
 
 // Mock data for a point calculation problem
 // In a real app, this would come from an API
+
+const imageUrl = 'http://localhost:8081/'
+
+
 const MOCK_PROBLEM = {
   id: 'p1',
-  imageUrl: 'http://localhost:8081/12345677799s||_888s?scale=0.6', 
+  tiles: '12345677799s||_888s?scale=0.6',
   correctAnswer: 8000, // Example: Mangan
   explanation: '满贯 8000点 (4番 30符)',
+  wind_of_round: '东',
+  wind_of_player: '南',
+  agari_type: '自摸',
 }
 
 export default function PointCalculationPage() {
@@ -76,13 +83,20 @@ export default function PointCalculationPage() {
                 <div className="h-32 flex items-center text-slate-400">加载题目中...</div>
               ) : (
                 <img 
-                  src={currentProblem.imageUrl} 
+                  src={`${imageUrl}${currentProblem.tiles}`} 
                   alt="Mahjong Hand" 
                   className="max-w-full h-auto shadow-sm rounded"
                 />
               )}
             </div>
 
+            {/* Extra Information Area */}
+            <div className="mb-6 text-center text-xl font-bold text-slate-800 dark:text-slate-400">
+              <span className="mr-4">{currentProblem.wind_of_round}场</span>
+              <span className="mr-4">{currentProblem.wind_of_player}家</span>
+              <span>{currentProblem.agari_type}</span>
+            </div>
+            
             {/* Input Area */}
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
