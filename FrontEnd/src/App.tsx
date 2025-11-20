@@ -7,6 +7,7 @@ import NewsPage from "./pages/NewsPage"
 import ForumPage from "./pages/ForumPage"
 import ProfilePage from "./pages/ProfilePage"
 import PracticePage from "./pages/PracticePage"
+import PointCalculationPage from "./pages/PointCalculationPage"
 import "./styles/App.css"
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
@@ -31,6 +32,7 @@ function App() {
         {/* <Route path="/forum" element={<ForumPage />} /> */}
         {/* 何切练习 */}
         <Route path="/practice" element={<PracticePage />} />
+        <Route path="/practice/point-calculation" element={<PointCalculationPage />} />
         {/* 个人中心 */}
         <Route path="/profile" element={<ProfilePage />} />
       </Routes>

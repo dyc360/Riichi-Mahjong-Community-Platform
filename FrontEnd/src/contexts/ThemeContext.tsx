@@ -24,8 +24,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // 应用主题到HTML根元素
   useEffect(() => {
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(theme);
+    const root = document.documentElement;
+    // 只有当class确实需要改变时才操作DOM，避免触发不必要的transition
+    if (!root.classList.contains(theme)) {
+      root.classList.remove('light', 'dark');
+      root.classList.add(theme);
+    }
   }, [theme]);
 
   return (
