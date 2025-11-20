@@ -43,7 +43,7 @@ export function HomePageHeader() {
   return (
     <header className="py-6 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-md transition-colors duration-300">
         <div className="container mx-auto px-4 flex justify-between items-center">
-            <h1 className="text-2xl font-bold">MajHub</h1>
+            <Link to="/home" className="text-2xl font-bold">MajHub</Link>
             <nav>
                 <ul className="flex space-x-4">
                     <li>

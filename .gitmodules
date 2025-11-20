@@ -1,0 +1,3 @@
+[submodule "Backend/MajPtCal"]
+	path = Backend/MajPtCal
+	url = git@github.com:lexonless/mahjong_points_cal.git
