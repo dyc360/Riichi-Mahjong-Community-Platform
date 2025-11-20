@@ -6,7 +6,7 @@ import { HomePageHeader } from '../components/homePageComp'
 // In a real app, this would come from an API
 const MOCK_PROBLEM = {
   id: 'p1',
-  imageUrl: 'https://placehold.co/600x200/png?text=Hand+Tiles+Image', // Placeholder image
+  imageUrl: 'http://localhost:8081/12345677799s||_888s?scale=0.6', 
   correctAnswer: 8000, // Example: Mangan
   explanation: '满贯 8000点 (4番 30符)',
 }
