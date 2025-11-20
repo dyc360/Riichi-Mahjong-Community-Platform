@@ -5,6 +5,7 @@ import LoginPage_Admin from "./pages/LoginPage_Admin"
 import HomePage from "./pages/HomePage"
 import NewsPage from "./pages/NewsPage"
 import ForumPage from "./pages/ForumPage"
+import ProfilePage from "./pages/ProfilePage"
 import PracticePage from "./pages/PracticePage"
 import PointCalculationPage from "./pages/PointCalculationPage"
 import "./styles/App.css"
@@ -33,7 +34,7 @@ function App() {
         <Route path="/practice" element={<PracticePage />} />
         <Route path="/practice/point-calculation" element={<PointCalculationPage />} />
         {/* 个人中心 */}
-        {/* <Route path="/profile" element={<ProfilePage />} /> */}
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </BrowserRouter>
   )
