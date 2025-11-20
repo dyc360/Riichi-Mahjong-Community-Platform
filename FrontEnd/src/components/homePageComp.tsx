@@ -1,5 +1,5 @@
 import { type ChangeEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { ThemeToggle } from './widgets/ThemeToggle'
 
 // 新闻子模块组件
@@ -238,3 +238,47 @@ export function PracticeCard({ title, description, difficulty, count, link = "#"
         </Link>
     )
 }
+
+// 定义导航项类型
+type NavItemType = {
+  label: string;
+  path: string;
+};
+
+// 导航项数据（可根据需要扩展）
+const navItems: NavItemType[] = [
+  { label: '首页', path: '/home' },
+  { label: '新闻浏览', path: '/news' },
+  { label: '论坛交流', path: '/forum' },
+  { label: '何切练习', path: '/practice' },
+];
+
+// 导航项子组件
+const NavItem = ({ label, path }: NavItemType) => {
+  const location = useLocation();
+  const isActive = location.pathname === path;
+
+  return (
+    <Link
+      to={path}
+      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
+        ${isActive
+          ? 'bg-indigo-500 text-white'
+          : 'text-slate-800 hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-700'
+        }`}
+    >
+      {label}
+    </Link>
+  );
+};
+
+// 主导航组件
+export const MainNavigation = () => {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {navItems.map((item) => (
+        <NavItem key={item.path} label={item.label} path={item.path} />
+      ))}
+    </div>
+  );
+};
