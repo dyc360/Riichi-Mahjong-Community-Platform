@@ -40,6 +40,7 @@ export default function PracticePage() {
                 description="计算给出的手牌的点数，提升算分速度。" 
                 difficulty="Medium" 
                 count={85} 
+                link="/practice/point-calculation"
             />
             <PracticeCard 
                 title="清一色训练" 
