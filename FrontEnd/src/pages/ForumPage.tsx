@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { HomePageHeader, ModuleContainer } from '../components/homePageComp';
+import { HomePageHeader, MainNavigation, ModuleContainer } from '../components/homePageComp';
 import { useTheme } from '../contexts/ThemeContext';
 
 // 定义帖子基础类型接口
@@ -173,12 +173,7 @@ export default function ForumPage() {
       
       {/* 导航栏（与其他页面保持一致） */}
       <nav className="container mx-auto px-4 py-4 border-b border-gray-200 dark:border-slate-700">
-        <div className="flex flex-wrap gap-2">
-          <NavItem label="首页" path="/home" />
-          <NavItem label="新闻浏览" path="/news" />
-          <NavItem label="论坛交流" path="/forum" />
-          <NavItem label="何切练习" path="/practice" />
-        </div>
+        < MainNavigation/>
       </nav>
 
       {/* 主内容区 */}
@@ -253,25 +248,6 @@ export default function ForumPage() {
     </>
   );
 }
-
-// 导航项组件（复用自新闻页）
-const NavItem = ({ label, path }: { label: string; path: string }) => {
-  const location = useLocation();
-  const isActive = location.pathname === path;
-
-  return (
-    <Link
-      to={path}
-      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-        ${isActive
-          ? 'bg-indigo-500 text-white'
-          : 'text-slate-800 hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-700'
-        }`}
-    >
-      {label}
-    </Link>
-  );
-};
 
 // 发帖按钮组件
 const CreatePostButton = () => {
