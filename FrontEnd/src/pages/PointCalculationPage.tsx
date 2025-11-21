@@ -61,7 +61,7 @@ export default function PointCalculationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+    <>
       <HomePageHeader />
       
       <main className="container mx-auto px-4 py-12 flex flex-col items-center">
@@ -191,6 +191,6 @@ export default function PointCalculationPage() {
           </div>
         </div>
       </main>
-    </div>
+    </>
   )
 }
