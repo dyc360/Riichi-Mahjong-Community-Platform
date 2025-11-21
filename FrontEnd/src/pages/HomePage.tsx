@@ -71,10 +71,10 @@ const NewsModule = () => (
       {/* 行业资讯子模块 */}
       <NewsSubModule title="行业资讯">
         <div className="space-y-3">
-          <ProNews title='新闻一' timestamp='2小时前'/>
-          <ProNews title='新闻二' timestamp='3小时前'/>
-          <ProNews title='新闻三' timestamp='5小时前'/>
-          <ProNews title='新闻四' timestamp='1天前'/>
+          <ProNews title='立直麻将职业联赛新赛季规则调整' timestamp='2小时前'/>
+          <ProNews title='国际麻将协会宣布新增赛事项目' timestamp='3小时前'/>
+          <ProNews title='日本职业雀士访问中国交流活动圆满结束' timestamp='5小时前'/>
+          <ProNews title='麻将AI研究取得新突破，胜率提升至92%' timestamp='1天前'/>
         </div>
         <div className="mt-3 text-right">
           <Link to="/news/industry" className="text-xs text-indigo-500 hover:text-indigo-300">

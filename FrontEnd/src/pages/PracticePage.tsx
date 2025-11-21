@@ -17,7 +17,7 @@ const PRACTICE_PROBLEMS = [
 
 export default function PracticePage() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+    <>
       <HomePageHeader />
       
       {/* 导航栏 */}
@@ -97,7 +97,7 @@ export default function PracticePage() {
           </div>
         </section>
       </main>
-    </div>
+    </>
   )
 }
 

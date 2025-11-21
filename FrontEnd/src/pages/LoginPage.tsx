@@ -33,40 +33,62 @@ function useLoginForm(): UseLoginFormResult {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    const navigate = useNavigate();
-    const authContext = useAuth();
-    const [error, setError] = useState<string | null>(null);
-    event.preventDefault()
-    setIsSubmitting(true)
-    setError(null);
+  // 在这里调用 useAuth 和 useNavigate
+  const navigate = useNavigate();
+  const authContext = useAuth();
 
-    try {
-      const response = await fetch('/api/auth/user/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: form.email, password: form.password }),
-      });
+const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  event.preventDefault()
+  setIsSubmitting(true)
 
-      if (!response.ok) {
-        const { message } = await response.json();
-        throw new Error(message ?? '登录失败');
-      }
+  try {
+    console.log('开始登录请求...');
 
-      const { token, user } = await response.json();
+    const response = await fetch('http://localhost:8000/api/auth/login/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: form.email,
+        password: form.password
+      }),
+    });
 
-      // 保存认证状态到全局authcontext
-      localStorage.setItem('authToken', token);
-      authContext.login({ token, user });
+    console.log('响应状态:', response.status);
 
-      navigate('/homePage', { replace: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '网络错误');
-    } finally {
-      setIsSubmitting(false);
-    }
+    if (!response.ok) {
+      throw new Error('登录失败');
+    }
+
+    const data = await response.json();
+    console.log('登录响应数据:', data);
+
+    if (data.success && data.token) {
+      // 根据您的 AuthContext 结构转换数据
+      const user = {
+        id: data.user.id.toString(), // 转换为 string
+        username: data.user.username, // 后端返回 username
+        email: form.email // 使用表单中的 email，或者如果后端返回了 email 则使用 data.user.email
+      };
+
+      // 使用 AuthContext 的 login 方法
+      authContext.login(data.token, user);
+
+      // 跳转到主页
+      navigate('/home', { replace: true });
+    } else {
+      throw new Error(data.message || '登录失败');
+    }
+  } catch (err) {
+    console.error('登录错误:', err);
+    alert(err instanceof Error ? err.message : '网络错误');
+  } finally {
+    setIsSubmitting(false);
   }
+}
 
+  // ... 其他函数保持不变
   const handleEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, email: event.target.value }))
   }

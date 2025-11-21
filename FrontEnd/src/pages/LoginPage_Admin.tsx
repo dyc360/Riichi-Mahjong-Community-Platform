@@ -31,39 +31,41 @@ function useLoginForm(): UseLoginFormResult {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState<string | null>(null);
+  
+  const navigate = useNavigate();
+  const authContext = useAuth();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    const navigate = useNavigate();
-    const authContext = useAuth();
-    const [error, setError] = useState<string | null>(null);
     event.preventDefault()
     setIsSubmitting(true)
     setError(null);
 
-    try {
-      const response = await fetch('/api/auth/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminNumber: form.admin_number, password: form.password }),
-      });
+    try {
+      const response = await fetch('/api/auth/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminNumber: form.admin_number, password: form.password }),
+      });
 
-      if (!response.ok) {
-        const { message } = await response.json();
-        throw new Error(message ?? '登录失败');
-      }
+      if (!response.ok) {
+        const { message } = await response.json();
+        throw new Error(message ?? '登录失败');
+      }
 
-      const { token, user } = await response.json();
+      const { token, user } = await response.json();
 
-      // 保存认证状态到全局authcontext
-      localStorage.setItem('authToken', token);
-      authContext.login({ token, user });
+      // 保存认证状态到全局authcontext
+      // localStorage.setItem('authToken', token); // AuthContext handles this
+      authContext.login(token, user);
 
-      navigate('/homePage', { replace: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '网络错误');
-    } finally {
-      setIsSubmitting(false);
-    }
+      navigate('/homePage', { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '网络错误');
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const handleAdminNumberChange = (event: ChangeEvent<HTMLInputElement>) => {
