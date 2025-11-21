@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { HomePageHeader, PracticeCard } from '../components/homePageComp'
+import { HomePageHeader, PracticeCard, MainNavigation } from '../components/homePageComp'
 
 // Mock data for practice problems
 const PRACTICE_PROBLEMS = [
@@ -17,17 +17,12 @@ const PRACTICE_PROBLEMS = [
 
 export default function PracticePage() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+    <>
       <HomePageHeader />
       
       {/* Navigation */}
       <nav className="container mx-auto px-4 py-4 border-b border-gray-200 dark:border-slate-700">
-        <div className="flex flex-wrap gap-2">
-          <NavItem label="首页" path="/home" />
-          <NavItem label="新闻浏览" path="/news" />
-          <NavItem label="论坛交流" path="/forum" />
-          <NavItem label="何切练习" path="/practice" />
-        </div>
+        <MainNavigation />
       </nav>
 
       <main className="container mx-auto px-4 py-8">
@@ -102,7 +97,7 @@ export default function PracticePage() {
           </div>
         </section>
       </main>
-    </div>
+    </>
   )
 }
 

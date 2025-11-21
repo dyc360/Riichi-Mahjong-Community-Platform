@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 // import { type ChangeEvent, type FormEvent, useMemo, useState } from 'react'
 import {HomePageHeader} from '../components/homePageComp'
 import { useTheme } from '../contexts/ThemeContext';
-import { NewsSubModule, ModuleContainer, ProNews, TeamRank, GameInfoCard, ForumTopicRank, PracticeCard } from '../components/homePageComp'
+import { NewsSubModule, ModuleContainer, ProNews, TeamRank, GameInfoCard, ForumTopicRank, PracticeCard, MainNavigation } from '../components/homePageComp'
 
 export default function HomePage() {
   return (
@@ -11,12 +11,7 @@ export default function HomePage() {
       {/* Add more content for the home page here */}
       {/* 顶部引导导航 */}
       <nav className="container mx-auto px-4 py-4 border-b border-gray-200 dark:border-slate-700">
-        <div className="flex flex-wrap gap-2">
-          <NavItem label="首页" path="/home" />
-          <NavItem label="新闻浏览" path="/news" />
-          <NavItem label="论坛交流" path="/forum" />
-          <NavItem label="何切练习" path="/practice" />
-        </div>
+        <MainNavigation />
       </nav>
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -76,10 +71,10 @@ const NewsModule = () => (
       {/* 行业资讯子模块 */}
       <NewsSubModule title="行业资讯">
         <div className="space-y-3">
-          <ProNews title='新闻一' timestamp='2小时前'/>
-          <ProNews title='新闻二' timestamp='3小时前'/>
-          <ProNews title='新闻三' timestamp='5小时前'/>
-          <ProNews title='新闻四' timestamp='1天前'/>
+          <ProNews title='立直麻将职业联赛新赛季规则调整' timestamp='2小时前'/>
+          <ProNews title='国际麻将协会宣布新增赛事项目' timestamp='3小时前'/>
+          <ProNews title='日本职业雀士访问中国交流活动圆满结束' timestamp='5小时前'/>
+          <ProNews title='麻将AI研究取得新突破，胜率提升至92%' timestamp='1天前'/>
         </div>
         <div className="mt-3 text-right">
           <Link to="/news/industry" className="text-xs text-indigo-500 hover:text-indigo-300">
