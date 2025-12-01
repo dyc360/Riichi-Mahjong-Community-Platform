@@ -6,12 +6,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 import urllib.parse
+import traceback
 
 from mahjong_utils.majhand_generator.majhand_generator_normal import generate_normal_hand
 from mahjong_utils.majhand_generator.majhand_generator_chiitoitsu import generate_chiitoitsu_hand
 from mahjong_utils.majhand_generator.majhand_generator_kokushimusou import generate_kokushimusou_hand
 from mahjong_utils.majhand_generator.majhand_generator_win import generate_win_majhand
 from mahjong_utils.mahjong.mahjong.hand_calculating.fu import FuCalculator
+from mahjong_utils.majhand_generator.majhand_generator_efficiency import process_efficiency
 
 from mahjong.tile import TilesConverter
 from mahjong.meld import Meld
@@ -60,6 +62,7 @@ class MahjongTileView(APIView):
 
 class MahjongPointView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []  # 禁用认证以跳过 CSRF 检查
 
     def post(self, request):
         """
@@ -75,7 +78,7 @@ class MahjongPointView(APIView):
         try:
             data = request.data
             request_type = data.get('type', 'practice')
-            if request_type == 'practice':
+            if request_type == 'practice_point':
                 # 练习模式，生成随机和牌并计算点数
                 hand_type = data.get('hand_type', None)  # 可选指定手牌类型
                 allow_no_yaku = data.get('allow_no_yaku', False)  # 是否允许无役和牌
@@ -326,6 +329,55 @@ class MahjongPointView(APIView):
                 return Response(response_data)
             return Response(response_data)
         except Exception as e:
-            import traceback
+            traceback.print_exc()
+            return Response({"error": str(e), "traceback": traceback.format_exc()}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class MahjongEfficiencyView(APIView):       
+    permission_classes = [AllowAny]
+    authentication_classes = []  # 禁用认证以跳过 CSRF 检查
+
+    def post(self, request):
+        """
+        计算牌效率处理
+        请求体应包含：
+        - hand: 手牌字符串表示
+        - melds: 明杠、碰等副露信息列表（可选）
+        """
+        try:
+            data = request.data
+            hand_34_array = data.get('hand_34_array', '')
+            ukeire_tile = data.get('ukeire_tile', '')
+            sutehai = data.get('sutehai', '')
+            tile_num = data.get('tile_num', '')
+            tile_13_in_hand = data.get('tile_13_in_hand', '')
+
+            tile_34_array, tile_num, tile_13_in_hand, new_ukeire_tile, shanten_numbers, waiting_tiles \
+                = process_efficiency(hand_34_array, tile_num, tile_13_in_hand, ukeire_tile, sutehai)
+
+            def convert_tile_in_hand_to_str(tile_13_in_hand: list[int]) -> list[str]:
+                result = []
+                for i in tile_13_in_hand:
+                    suit = i // 9
+                    index_in_suit = i % 9 + 1
+                    result.append(f"{index_in_suit}{['m','p','s','z'][suit]}")
+                return result
+            
+            tile_in_hand_str_list = convert_tile_in_hand_to_str(tile_13_in_hand)
+            ukeire_tile_str = convert_tile_in_hand_to_str([new_ukeire_tile])[0]
+            waiting_tiles_str = []
+            for wait_list in waiting_tiles:
+                waiting_tiles_str.append(convert_tile_in_hand_to_str(wait_list))
+            response_data = {
+                "tile_in_hand_str_list": tile_in_hand_str_list,
+                "hand_34_array": tile_34_array,
+                "tile_num": tile_num,
+                "tile_13_in_hand": tile_in_hand_str_list,
+                "ukeire_tile_str": ukeire_tile_str,
+                "ukeire_tile": new_ukeire_tile,
+                "shanten_numbers": shanten_numbers,
+                "waiting_tiles_str": waiting_tiles_str
+            }
+            return Response(response_data)
+        except Exception as e:
             traceback.print_exc()
             return Response({"error": str(e), "traceback": traceback.format_exc()}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

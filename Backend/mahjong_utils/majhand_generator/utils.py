@@ -19,6 +19,10 @@ class WinHandTemplate:
         self.ura_dora_indicators = ura_dora_indicators  # 里宝牌指示牌列表
         self.num_indicators = num_indicators  # 宝牌指示牌数量
         self.pair_string = pair_string  # 七对子中作为雀头的牌的字符串表示
+        
+# class EfficiecnyHandTemplate:
+#     def __init__(self, tiles: list):
+
 
 def make_meld(
     meld_type: str,
@@ -74,3 +78,15 @@ def generate_dora_indicators(least_num: int, max_num: int, exist_aka_dara: list[
             elif 28 <= tile <= 34:
                 dora_indictors.append(TilesConverter.string_to_136_array(honors=f"{tile - 27}", has_aka_dora=True)[0])
     return dora_indictors, num_indicators, selected_tiles
+
+def convert_tiles_to_str_dict(tile_13_in_hand: list[int], tile_str: dict) -> str:
+    sorted(tile_13_in_hand)
+    for tile in tile_13_in_hand:
+        if 1 <= tile <= 9:
+            tile_str['man'] += str(tile)
+        elif 10 <= tile <= 18:
+            tile_str['pin'] += str(tile - 9)
+        elif 19 <= tile <= 27:
+            tile_str['sou'] += str(tile - 18)
+        elif 28 <= tile <= 34:
+            tile_str['honor'] += str(tile - 27)
