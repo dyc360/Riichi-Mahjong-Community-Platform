@@ -30,9 +30,9 @@ function App() {
         <Route path="/home" element={<HomePage />} />
         {/* <Route path="/homePage" element={<HomePage />} /> */}
         {/* 新闻浏览 */}
-        {/* <Route path="/news" element={<NewsPage />} /> */}
+        <Route path="/news" element={<NewsPage />} /> 
         {/* 论坛交流 */}
-        {/* <Route path="/forum" element={<ForumPage />} /> */}
+        <Route path="/forum" element={<ForumPage />} />
         {/* 何切练习 */}
         <Route path="/practice" element={<PracticePage />} />
         <Route path="/practice/point-calculation" element={<PointCalculationPage />} />
