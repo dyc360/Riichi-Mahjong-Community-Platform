@@ -8,6 +8,7 @@ import ForumPage from "./pages/ForumPage"
 import ProfilePage from "./pages/ProfilePage"
 import PracticePage from "./pages/PracticePage"
 import PointCalculationPage from "./pages/PointCalculationPage"
+import EfficiencyCalculationPage from "./pages/EfficiencyCalculationPage"
 import "./styles/App.css"
 import { AuthProvider } from './contexts/AuthContext';
 // import HomePage from "./pages/HomePage"
@@ -35,6 +36,7 @@ function App() {
         {/* 何切练习 */}
         <Route path="/practice" element={<PracticePage />} />
         <Route path="/practice/point-calculation" element={<PointCalculationPage />} />
+        <Route path="/practice/efficiency-calculation" element={<EfficiencyCalculationPage />} />
         {/* 个人中心 */}
         <Route path="/profile" element={<ProfilePage />} />
       </Routes>
