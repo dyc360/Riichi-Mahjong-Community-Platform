@@ -45,12 +45,15 @@ export default function PointCalculationPage() {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
-          type: 'practice'
+          type: 'practice_point'
         })
       })
       
       if (!response.ok) {
-        throw new Error('Failed to fetch problem')
+        const errorDetails = await response.text();  // 获取服务器返回的错误信息
+        console.error(`Request failed with status: ${response.status}`);
+        console.error(`Error details: ${errorDetails}`);
+        throw new Error(`Failed to fetch problem: ${errorDetails}`);
       }
       
       const data = await response.json()
