@@ -62,6 +62,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 # 使用 SQLite (注释掉以切换到 MySQL)
+# 使用 SQLite 快速开始（推荐用于开发）
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
