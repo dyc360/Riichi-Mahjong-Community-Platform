@@ -1,0 +1,29 @@
+# Python 
+__pycache__/ 
+*.py[cod] 
+*.so 
+*.egg 
+.Python 
+ECHO 处于打开状态。
+# Node.js 
+node_modules/ 
+npm-debug.log* 
+yarn-debug.log* 
+yarn-error.log* 
+ECHO 处于打开状态。
+# IDE 
+.idea/ 
+.vscode/ 
+*.swp 
+*.swo 
+ECHO 处于打开状态。
+# Environment 
+.env 
+.env.local 
+ECHO 处于打开状态。
+# OS files 
+.DS_Store 
+Thumbs.db 
+ECHO 处于打开状态。
+# Logs 
+*.log 
