@@ -78,6 +78,7 @@ class MahjongPointView(APIView):
         try:
             data = request.data
             request_type = data.get('type', 'practice')
+            response_data = {}
             if request_type == 'practice_point':
                 # 练习模式，生成随机和牌并计算点数
                 hand_type = data.get('hand_type', None)  # 可选指定手牌类型

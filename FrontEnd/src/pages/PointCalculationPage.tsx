@@ -45,7 +45,7 @@ export default function PointCalculationPage() {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
-          type: 'practice'
+          type: 'practice_point'
         })
       })
       
@@ -122,15 +122,19 @@ export default function PointCalculationPage() {
 
       if (main === currentProblem.correctMain + currentProblem.main_bonus) {
         setDealerFeedback('correct')
+        if (additional === currentProblem.correctAdditional + currentProblem.additional_bonus){
+          setFeedback('correct')
+        }
       } else {
         setDealerFeedback('incorrect')
+        setFeedback('incorrect')
       }
       if (additional === currentProblem.correctAdditional + currentProblem.additional_bonus) {
         setChildFeedback('correct')
       } else {
+        setFeedback('incorrect')
         setChildFeedback('incorrect')
       }
-      setFeedback((dealerFeedback === 'correct' && childFeedback === 'correct') ? 'correct' : 'incorrect')
     } else {
       const numericAnswer = parseInt(answer, 10)
       

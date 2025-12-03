@@ -19,6 +19,7 @@ import PlayerDetailPage from "./pages/PlayerDetailPage.tsx"
 import MatchDetailPage from "./pages/MatchDetailPage.tsx"
 import NewsMajsoulPage from "./pages/NewsMajsoulPage.tsx"
 import NewsMajsoulDetailPage from "./pages/NewsMajsoulDetailPage.tsx"
+import EfficiencyCalculationPage from "./pages/EfficiencyCalculationPage.tsx"
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
 
@@ -44,6 +45,7 @@ function App() {
         {/* 何切练习 */}
         <Route path="/practice" element={<PracticePage />} />
         <Route path="/practice/point-calculation" element={<PointCalculationPage />} />
+        <Route path="/practice/efficiency-calculation" element={<EfficiencyCalculationPage />} />
         {/* 个人中心 */}
         <Route path="/profile" element={<ProfilePage />} />
         {/* 行业资讯 */}
