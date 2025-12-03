@@ -45,7 +45,6 @@ function App() {
         {/* 何切练习 */}
         <Route path="/practice" element={<PracticePage />} />
         <Route path="/practice/point-calculation" element={<PointCalculationPage />} />
-        <Route path="/practice/efficiency-calculation" element={<EfficiencyCalculationPage />} />
         {/* 个人中心 */}
         <Route path="/profile" element={<ProfilePage />} />
         {/* 行业资讯 */}
