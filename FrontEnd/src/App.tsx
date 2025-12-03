@@ -8,22 +8,18 @@ import ForumPage from "./pages/ForumPage"
 import ProfilePage from "./pages/ProfilePage"
 import PracticePage from "./pages/PracticePage"
 import PointCalculationPage from "./pages/PointCalculationPage"
-<<<<<<< HEAD
-import EfficiencyCalculationPage from "./pages/EfficiencyCalculationPage"
-import "./styles/App.css"
-=======
 import NewsProPage from "./pages/NewsProPage"
 import NewsArchivePage from "./pages/NewsArchivePage.tsx"
 import NewsCategoryPage from "./pages/NewsCategoryPage.tsx"
 import NewsMLeaguePage from "./pages/NewsMLeaguePage.tsx"
 import MLeagueSchedulePage from "./pages/MLeagueSchedulePage.tsx"
->>>>>>> 900b7953ea32ca0d9fd2809e4ed1344fa45b3414
 import { AuthProvider } from './contexts/AuthContext';
 import MLeagueStatsPage from "./pages/MLeagueStatsPage.tsx"
 import PlayerDetailPage from "./pages/PlayerDetailPage.tsx"
 import MatchDetailPage from "./pages/MatchDetailPage.tsx"
 import NewsMajsoulPage from "./pages/NewsMajsoulPage.tsx"
 import NewsMajsoulDetailPage from "./pages/NewsMajsoulDetailPage.tsx"
+import EfficiencyCalculationPage from "./pages/EfficiencyCalculationPage.tsx"
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
 
