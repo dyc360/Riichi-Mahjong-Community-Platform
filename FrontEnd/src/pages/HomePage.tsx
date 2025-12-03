@@ -30,39 +30,12 @@ export default function HomePage() {
   )
 }
 
-// 导航项组件
-const NavItem = ({ 
-  label, 
-  path 
-}: { 
-  label: string; 
-  path: string 
-}) => {
-  const location = useLocation();
-  const isActive = location.pathname === path;
-  const { theme } = useTheme();
-  
-  return (
-    <Link 
-      to={path}
-      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-        ${isActive 
-          ? 'bg-indigo-500 text-white' 
-          : 'text-slate-800 hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-700'
-        }`}
-    >
-      {label}
-    </Link>
-  );
-};
-
-
-
 
 
 // 新闻浏览模块
 const NewsModule = () => (
   <ModuleContainer
+    id="news"
     title="新闻浏览"
     description="立直麻将相关的最新动态与数据"
     className="col-span-1 lg:col-span-2"
@@ -71,13 +44,13 @@ const NewsModule = () => (
       {/* 行业资讯子模块 */}
       <NewsSubModule title="行业资讯">
         <div className="space-y-3">
-          <ProNews title='立直麻将职业联赛新赛季规则调整' timestamp='2小时前'/>
-          <ProNews title='国际麻将协会宣布新增赛事项目' timestamp='3小时前'/>
-          <ProNews title='日本职业雀士访问中国交流活动圆满结束' timestamp='5小时前'/>
-          <ProNews title='麻将AI研究取得新突破，胜率提升至92%' timestamp='1天前'/>
+          <ProNews id={1} title='立直麻将职业联赛新赛季规则调整' timestamp='2小时前' category={['rules']}/>
+          <ProNews id={2} title='国际麻将协会宣布新增赛事项目' timestamp='3小时前' category={['tournament']}/>
+          <ProNews id={3} title='日本职业雀士访问中国交流活动圆满结束' timestamp='5小时前' category={['communication']}/>
+          <ProNews id={4} title='麻将AI研究取得新突破，胜率提升至92%' timestamp='1天前' category={['technology']}/>
         </div>
         <div className="mt-3 text-right">
-          <Link to="/news/industry" className="text-xs text-indigo-500 hover:text-indigo-300">
+          <Link to="/news#industry-news" className="text-xs text-indigo-500 hover:text-indigo-300">
             更多资讯 →
           </Link>
         </div>
@@ -93,7 +66,7 @@ const NewsModule = () => (
           <TeamRank rank={5} teamName="Pirates" score="-92.6" />
         </div>
         <div className="mt-3 text-right">
-          <Link to="/news/m-league" className="text-xs text-indigo-500 hover:text-indigo-300">
+          <Link to="/news#m-league" className="text-xs text-indigo-500 hover:text-indigo-300">
             完整排名 →
           </Link>
         </div>
@@ -108,8 +81,9 @@ const NewsModule = () => (
             imageUrl="https://placehold.co/100x70/6366f1/ffffff?text=Event"
           />
           <GameInfoCard 
-            title="版本更新公告" 
+            title="版本更新公告 v2.0.1" 
             subtitle="v2.0.1版本更新内容说明，修复已知问题"
+            imageUrl="https://placehold.co/100x70/10b981/ffffff?text=Update"
           />
           {/* <GameInfoCard 
             title="夏季锦标赛报名" 
@@ -118,7 +92,7 @@ const NewsModule = () => (
           /> */}
         </div>
         <div className="mt-3 text-right">
-          <Link to="/news/majsoul" className="text-xs text-indigo-500 hover:text-indigo-300">
+          <Link to="/news#majsoul" className="text-xs text-indigo-500 hover:text-indigo-300">
             游戏动态 →
           </Link>
         </div>
