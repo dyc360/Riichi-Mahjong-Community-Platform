@@ -24,6 +24,7 @@ interface ArticleDetail {
 
 export default function NewsDetailPage() {
   const { id } = useParams<{ id: string }>();
+  console.log('id:',id);
   const navigate = useNavigate();
   const { theme } = useTheme();
   const [article, setArticle] = useState<ArticleDetail | null>(null);
@@ -36,7 +37,7 @@ export default function NewsDetailPage() {
         setLoading(true);
         setError(null);
         
-        const response = await axios.get<ArticleDetail>(`${API_BASE_URL}/news/articles/${id}/`);
+        const response = await axios.get<ArticleDetail>(`${API_BASE_URL}/news_api/articles/${id}/`);
         setArticle(response.data);
       } catch (err: any) {
         console.error('获取文章详情失败:', err);
@@ -130,7 +131,8 @@ export default function NewsDetailPage() {
       </>
     );
   }
-
+  console.log("article:",article);
+  console.log("category:",article.category_name);
   return (
     <>
       <HomePageHeader />
@@ -218,8 +220,9 @@ export default function NewsDetailPage() {
         <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">相关文章</h2>
+
             <Link 
-              to={`/news/category/${article.category_name.toLowerCase()}`}
+              to={`/news/category/${article.category_name}`}
               className="text-sm text-indigo-500 hover:text-indigo-300 dark:text-indigo-400"
             >
               查看更多 →
@@ -235,5 +238,6 @@ export default function NewsDetailPage() {
 // 格式化内容（如果需要的话）
 const formatContent = (content: string): string => {
   // 这里可以添加内容格式化逻辑，比如将换行符转换为<br>等
-  return content.replace(/\n/g, '<br>');
+  return content;
+  //return content.replace(/\n/g, '<br>');//暂时注释掉验证功能，以后可能需要进一步修改
 };

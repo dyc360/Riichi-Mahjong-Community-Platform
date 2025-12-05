@@ -65,7 +65,7 @@ export function HomePageHeader() {
   )
 }
 
-export type NewsCategory = "rules" | "tournament" | "technology" | "communication";
+export type NewsCategory = "rules" | "tournament" | "technology" | "communication" | "default";
 
 export type ProNewsProps = {
     id: number,
@@ -76,21 +76,29 @@ export type ProNewsProps = {
 
 
 export function ProNews({ id, title, timestamp, category }: ProNewsProps) {
-    return (
-    <Link 
-        to={`/news/pro/${title}?id=${id}`} 
-        className="group flex items-center justify-between rounded-lg border border-transparent p-3 transition-all hover:border-slate-200 hover:bg-slate-50 hover:shadow-sm dark:hover:border-slate-700 dark:hover:bg-slate-800/50"
-    >
-        <div className="flex items-center gap-3 overflow-hidden">
-            <span className="truncate text-sm font-medium text-slate-700 group-hover:text-indigo-600 dark:text-slate-200 dark:group-hover:text-indigo-400">
-                {title}
-            </span>
-        </div>
-        <span className="shrink-0 text-xs font-medium text-slate-400 group-hover:text-slate-500 dark:text-slate-500 dark:group-hover:text-slate-400">
-            {timestamp}
-        </span>
-    </Link>
-  );
+  // 截断标题，最多显示9个字
+  const truncateTitle = (text: string, maxLength: number = 9): string => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+  const displayTitle = truncateTitle(title);
+  
+  return (
+  <Link 
+      to={`/news/pro/${title}?id=${id}`} 
+      className="group flex items-center justify-between rounded-lg border border-transparent p-3 transition-all hover:border-slate-200 hover:bg-slate-50 hover:shadow-sm dark:hover:border-slate-700 dark:hover:bg-slate-800/50"
+  >
+      <div className="flex items-center gap-3 overflow-hidden">
+          <span className="truncate text-sm font-medium text-slate-700 group-hover:text-indigo-600 dark:text-slate-200 dark:group-hover:text-indigo-400">
+              {displayTitle}
+          </span>
+      </div>
+      <span className="shrink-0 text-xs font-medium text-slate-400 group-hover:text-slate-500 dark:text-slate-500 dark:group-hover:text-slate-400">
+          {timestamp}
+      </span>
+  </Link>
+);
 }
 
 export type TeamRankProps = {

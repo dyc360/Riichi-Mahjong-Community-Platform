@@ -20,6 +20,7 @@ import MatchDetailPage from "./pages/MatchDetailPage.tsx"
 import NewsMajsoulPage from "./pages/NewsMajsoulPage.tsx"
 import NewsMajsoulDetailPage from "./pages/NewsMajsoulDetailPage.tsx"
 import EfficiencyCalculationPage from "./pages/EfficiencyCalculationPage.tsx"
+import NewsDetailPage from "./pages/NewsDetailPage.tsx"
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
 
@@ -52,6 +53,7 @@ function App() {
         <Route path="/news/pro/:title" element={<NewsProPage />} />
         <Route path="/news/archive" element={<NewsArchivePage />} />
         <Route path="/news/category/:category" element={<NewsCategoryPage />} />
+        <Route path="/news/detail/:id" element={<NewsDetailPage />} />
         {/* m-league积分 */}
         <Route path="/news/m-league" element={<NewsMLeaguePage />} />
         {/* m-league赛程安排 */}

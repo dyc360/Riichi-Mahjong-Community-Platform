@@ -9,7 +9,8 @@ const CATEGORY_LABELS = {
   'rules': '规则更新',
   'tournament': '赛事动态',
   'technology': '技术发展',
-  'communication': '国际交流'
+  'communication': '国际交流',
+  'default': '其他资讯'
 };
 
 export default function NewsCategoryPage() {
@@ -20,12 +21,13 @@ export default function NewsCategoryPage() {
   const navigate = useNavigate();
 
   // 验证分类是否有效
-  const isValidCategory = Object.keys(CATEGORY_LABELS).includes(category || '');
-  
+  const isValidCategory = Object.keys(CATEGORY_LABELS).includes(category || 'default');
+  //console.log(category);
   // 根据分类筛选新闻
   const filteredNews = INDUSTRY_NEWS.filter(news => 
     news.category.includes(category as any)
   );
+  //console.log(filteredNews);
 
   // 分页
   const totalPages = Math.ceil(filteredNews.length / itemsPerPage);
@@ -39,7 +41,7 @@ export default function NewsCategoryPage() {
 
   const categoryLabel = isValidCategory 
     ? CATEGORY_LABELS[category as keyof typeof CATEGORY_LABELS]
-    : '未知分类';
+    : '其他资讯';
 
   return (
     <>
