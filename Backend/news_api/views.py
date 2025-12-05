@@ -37,19 +37,6 @@ class ArticleListView(generics.ListAPIView):
         return queryset.order_by('-published_at', '-created_at')
 
 
-class ArticleDetailView(generics.RetrieveAPIView):
-    queryset = Article.objects.filter(status='published')
-    serializer_class = ArticleDetailSerializer
-    permission_classes = [permissions.AllowAny]
-
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.views += 1
-        instance.save()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
-
-
 class IndustryNewsView(generics.ListAPIView):
     serializer_class = ArticleListSerializer
     permission_classes = [permissions.AllowAny]

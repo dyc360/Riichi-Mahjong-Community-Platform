@@ -4,6 +4,7 @@ from auth_api.views import home_view, HealthCheckView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/news_api/', include('news_api.urls')),
     path('api/auth/', include('auth_api.urls')),
     path('api/mahjong/', include('mahjong_api.urls')),
     path('health/', HealthCheckView.as_view(), name='health-check'),
