@@ -1,10 +1,112 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom'
 // import { type ChangeEvent, type FormEvent, useMemo, useState } from 'react'
 import {HomePageHeader} from '../components/homePageComp'
 import { useTheme } from '../contexts/ThemeContext';
 import { NewsSubModule, ModuleContainer, ProNews, TeamRank, GameInfoCard, ForumTopicRank, PracticeCard, MainNavigation } from '../components/homePageComp'
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:8000/api';
+
+// 定义文章接口
+interface Article {
+  id: number;
+  title: string;
+  content: string;
+  summary: string;
+  cover_image: string | null;
+  category_name: string;
+  author_name: string;
+  published_at: string;
+  views: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// 将 category_name映射到NewsCategory类型
+const mapCategoryNameToNewsCategory = (categoryName: string): string[] => {
+  const categoryMap: Record<string, string[]> = {
+    'rules': ['rules'],
+    'tournament': ['tournament'],
+    'communication': ['communication'],
+    'technology': ['technology'],
+    'industry': ['rules'],
+    '赛事': ['tournament'],
+    '技术': ['technology'],
+    '交流': ['communication']
+  };
+  
+  return categoryMap[categoryName.toLowerCase()] || ['default'];
+};
+
+// 将发布时间转换为相对时间
+const formatRelativeTime = (publishedAt: string): string => {
+  const publishedDate = new Date(publishedAt);
+  const now = new Date();
+  const diffInMs = now.getTime() - publishedDate.getTime();
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  
+  if (diffInHours < 1) {
+    return '刚刚';
+  } else if (diffInHours < 24) {
+    return `${diffInHours}小时前`;
+  } else if (diffInDays < 7) {
+    return `${diffInDays}天前`;
+  } else {
+    return publishedDate.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric'
+    });
+  }
+};
 
 export default function HomePage() {
+  const [industryNews, setIndustryNews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 获取文章列表
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // 调用后端 API 获取文章列表
+        const response = await axios.get<Article[]>(`${API_BASE_URL}/news_api/articles/`);
+        
+        // 将Article转换为ProNews组件所需的格式
+        const transformedNews = response.data
+          .slice(0, 4)
+          .map(article => ({
+            id: article.id,
+            title: article.title,
+            timestamp: formatRelativeTime(article.published_at),
+            category: mapCategoryNameToNewsCategory(article.category_name)
+          }));
+        
+        setIndustryNews(transformedNews);
+      } catch (err: any) {
+        console.error('获取首页文章列表失败:', err);
+        setError('获取文章列表失败，请稍后重试');
+        // 如果获取失败，可以回退到模拟数据
+        setIndustryNews([
+          { id: 1, title: "立直麻将职业联赛新赛季规则调整", timestamp: "2小时前", category: ['rules'] },
+          { id: 2, title: "国际麻将协会宣布新增赛事项目", timestamp: "3小时前", category: ['tournament'] },
+          { id: 3, title: "日本职业雀士访问中国交流活动圆满结束", timestamp: "5小时前", category: ['communication'] },
+          { id: 4, title: "麻将AI研究取得新突破，胜率提升至92%", timestamp: "1天前", category: ['technology'] },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticles();
+  }, []);
+
   return (
     <>
       <HomePageHeader />
@@ -16,7 +118,7 @@ export default function HomePage() {
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 新闻浏览模块  */}
-          <NewsModule />
+          <NewsModule industryNews={industryNews} loading={loading} error={error} />
           
           {/* 论坛交流模块*/}
           <ForumModule />
@@ -30,10 +132,14 @@ export default function HomePage() {
   )
 }
 
-
-
 // 新闻浏览模块
-const NewsModule = () => (
+interface NewsModuleProps {
+  industryNews: any[];
+  loading: boolean;
+  error: string | null;
+}
+
+const NewsModule = ({ industryNews, loading, error }: NewsModuleProps) => (
   <ModuleContainer
     id="news"
     title="新闻浏览"
@@ -43,17 +149,23 @@ const NewsModule = () => (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {/* 行业资讯子模块 */}
       <NewsSubModule title="行业资讯">
-        <div className="space-y-3">
-          <ProNews id={1} title='立直麻将职业联赛新赛季规则调整' timestamp='2小时前' category={['rules']}/>
-          <ProNews id={2} title='国际麻将协会宣布新增赛事项目' timestamp='3小时前' category={['tournament']}/>
-          <ProNews id={3} title='日本职业雀士访问中国交流活动圆满结束' timestamp='5小时前' category={['communication']}/>
-          <ProNews id={4} title='麻将AI研究取得新突破，胜率提升至92%' timestamp='1天前' category={['technology']}/>
-        </div>
-        <div className="mt-3 text-right">
-          <Link to="/news#industry-news" className="text-xs text-indigo-500 hover:text-indigo-300">
-            更多资讯 →
-          </Link>
-        </div>
+          <div className="space-y-3">
+              {industryNews.map(news => (
+                <ProNews 
+                  key={news.id}
+                  id={news.id} 
+                  title={news.title} 
+                  timestamp={news.timestamp} 
+                  category={news.category}
+                />
+              ))}
+          </div>
+          <div className="mt-3 text-right">
+              <Link to="/news#industry-news" className="text-xs text-indigo-500 hover:text-indigo-300 dark:text-indigo-400">
+                更多资讯 →
+              </Link>
+          </div>
+          
       </NewsSubModule>
 
       {/*M-League联赛积分榜子模块*/}
@@ -66,7 +178,7 @@ const NewsModule = () => (
           <TeamRank rank={5} teamName="Pirates" score="-92.6" />
         </div>
         <div className="mt-3 text-right">
-          <Link to="/news#m-league" className="text-xs text-indigo-500 hover:text-indigo-300">
+          <Link to="/news#m-league" className="text-xs text-indigo-500 hover:text-indigo-300 dark:text-indigo-400">
             完整排名 →
           </Link>
         </div>
@@ -92,7 +204,7 @@ const NewsModule = () => (
           /> */}
         </div>
         <div className="mt-3 text-right">
-          <Link to="/news#majsoul" className="text-xs text-indigo-500 hover:text-indigo-300">
+          <Link to="/news#majsoul" className="text-xs text-indigo-500 hover:text-indigo-300 dark:text-indigo-400">
             游戏动态 →
           </Link>
         </div>
@@ -115,7 +227,7 @@ const ForumModule = () => (
       <ForumTopicRank rank={5} title="萌新入坑，请问有什么推荐的教学视频吗？" replies={36} time="3小时前" />
     </div>
     <div className="mt-3 text-right">
-      <Link to="/forum" className="text-sm font-medium text-indigo-500 hover:text-indigo-300">
+      <Link to="/forum" className="text-sm font-medium text-indigo-500 hover:text-indigo-300 dark:text-indigo-400">
         进入论坛 →
       </Link>
     </div>
@@ -157,7 +269,7 @@ const PracticeModule = () => (
         />
     </div>
     <div className="mt-6 text-center">
-       <Link to="/practice" className="inline-flex items-center justify-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm">
+       <Link to="/practice" className="inline-flex items-center justify-center px-6 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm dark:bg-indigo-500 dark:hover:bg-indigo-600">
             浏览全部题库
        </Link>
     </div>

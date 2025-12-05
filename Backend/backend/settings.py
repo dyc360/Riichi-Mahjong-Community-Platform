@@ -7,6 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-your-secret-key-here'
 
 DEBUG = True
+APPEND_SLASH = False
 
 ALLOWED_HOSTS = ['*']
 CORS_ALLOW_ALL_ORIGINS = True
@@ -22,6 +23,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'auth_api',
     'mahjong_api',
+    'news_api',
 ]
 
 AUTH_USER_MODEL = 'auth_api.CustomUser'

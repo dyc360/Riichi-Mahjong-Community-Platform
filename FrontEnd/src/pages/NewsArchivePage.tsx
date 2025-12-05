@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomePageHeader, ModuleContainer, ProNews, TeamRank, GameInfoCard, MainNavigation } from '../components/homePageComp';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -20,12 +20,23 @@ const NEWS_PER_PAGE = 5;
 export default function NewsArchivePage() {
   const { theme } = useTheme();
   const [activeCategory, setActiveCategory] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1); // 当前页码状态
-  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
- 
-  const handleGoBack = () =>{
-    navigate(-1)
+  
+  // 从URL参数中获取页码，默认为1
+  const initialPage = parseInt(searchParams.get('page') || '1', 10);
+  const [currentPage, setCurrentPage] = useState(Math.max(1, initialPage));
+
+  // 监听URL参数变化，更新当前页码
+  useEffect(() => {
+    const pageFromUrl = parseInt(searchParams.get('page') || '1', 10);
+    if (pageFromUrl !== currentPage) {
+      setCurrentPage(Math.max(1, pageFromUrl));
+    }
+  }, [searchParams]);
+
+  const handleGoBack = () => {
+    navigate(-1);
   };
 
   // 根据分类筛选新闻
@@ -42,11 +53,14 @@ export default function NewsArchivePage() {
     return filteredNews.slice(startIndex, startIndex + NEWS_PER_PAGE);
   };
 
-  // 处理页码变更
+  // 处理页码变更 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
-      // 滚动到页面顶部
+      // 更新URL参数
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.set('page', page.toString());
+      setSearchParams(newSearchParams);
       window.scrollTo(0, 0);
     }
   };
@@ -72,10 +86,8 @@ export default function NewsArchivePage() {
       </nav>
 
       <main className="container mx-auto px-4 py-8">
-
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-8">全部资讯</h1>
         
-
         {/* 行业资讯存档 */}
         {activeCategory === 'all' || activeCategory === 'industry' ? (
           <ModuleContainer
@@ -86,6 +98,7 @@ export default function NewsArchivePage() {
             <div className="space-y-3">
               {getCurrentPageNews().map(news => (
                 <ProNews 
+                  key={news.id}
                   id={news.id} 
                   title={news.title} 
                   timestamp={news.timestamp} 
@@ -100,7 +113,6 @@ export default function NewsArchivePage() {
         {totalPages > 1 && (
           <div className="mt-8 flex justify-center">
             <div className="flex items-center gap-2">
-              {/* 上一页按钮 */}
               <button 
                 className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -111,7 +123,6 @@ export default function NewsArchivePage() {
                 </svg>
               </button>
               
-              {/* 页码按钮*/}
               {currentPage > 2 && <button className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700" onClick={() => handlePageChange(1)}>1</button>}
               {currentPage > 3 && <span className="text-slate-500 dark:text-slate-400">...</span>}
               
@@ -120,8 +131,7 @@ export default function NewsArchivePage() {
                   {currentPage - 1}
                 </button>
               )}
-              
-              {/* 当前页码 */}
+
               <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-indigo-500 text-white" onClick={() => handlePageChange(currentPage)}>
                 {currentPage}
               </button>
@@ -134,8 +144,7 @@ export default function NewsArchivePage() {
               
               {currentPage < totalPages - 2 && <span className="text-slate-500 dark:text-slate-400">...</span>}
               {currentPage < totalPages - 1 && <button className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700" onClick={() => handlePageChange(totalPages)}>{totalPages}</button>}
-              
-              {/* 下一页按钮 */}
+
               <button 
                 className="w-10 h-10 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
                 onClick={() => handlePageChange(currentPage + 1)}
