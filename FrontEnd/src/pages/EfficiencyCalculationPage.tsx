@@ -74,7 +74,7 @@ const MahjongTile = ({
   isHoverable?: boolean;
 }) => {
   // Using the backend URL pattern we found
-  const imageUrl = `http://localhost:8000/api/mahjong/images/${code}`;
+  const imageUrl = `http://localhost:8000/api/mahjong/images/${code}/`;
 
   return (
     <div 

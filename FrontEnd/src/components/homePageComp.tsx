@@ -25,7 +25,7 @@ export const ModuleContainer = ({
   className = "",
 }: {
   id?: string;
-  title: string;
+  title?: string;
   description?: string;
   children: React.ReactNode;
   className?: string;
