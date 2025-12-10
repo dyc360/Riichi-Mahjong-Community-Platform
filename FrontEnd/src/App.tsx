@@ -8,8 +8,19 @@ import ForumPage from "./pages/ForumPage"
 import ProfilePage from "./pages/ProfilePage"
 import PracticePage from "./pages/PracticePage"
 import PointCalculationPage from "./pages/PointCalculationPage"
-import "./styles/App.css"
+import NewsProPage from "./pages/NewsProPage"
+import NewsArchivePage from "./pages/NewsArchivePage.tsx"
+import NewsCategoryPage from "./pages/NewsCategoryPage.tsx"
+import NewsMLeaguePage from "./pages/NewsMLeaguePage.tsx"
+import MLeagueSchedulePage from "./pages/MLeagueSchedulePage.tsx"
 import { AuthProvider } from './contexts/AuthContext';
+import MLeagueStatsPage from "./pages/MLeagueStatsPage.tsx"
+import PlayerDetailPage from "./pages/PlayerDetailPage.tsx"
+import MatchDetailPage from "./pages/MatchDetailPage.tsx"
+import NewsMajsoulPage from "./pages/NewsMajsoulPage.tsx"
+import NewsMajsoulDetailPage from "./pages/NewsMajsoulDetailPage.tsx"
+import EfficiencyCalculationPage from "./pages/EfficiencyCalculationPage.tsx"
+import NewsDetailPage from "./pages/NewsDetailPage.tsx"
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
 
@@ -35,8 +46,28 @@ function App() {
         {/* 何切练习 */}
         <Route path="/practice" element={<PracticePage />} />
         <Route path="/practice/point-calculation" element={<PointCalculationPage />} />
+        <Route path="/practice/efficiency-calculation" element={<EfficiencyCalculationPage />} />
         {/* 个人中心 */}
         <Route path="/profile" element={<ProfilePage />} />
+        {/* 行业资讯 */}
+        <Route path="/news/pro/:title" element={<NewsProPage />} />
+        <Route path="/news/archive" element={<NewsArchivePage />} />
+        <Route path="/news/category/:category" element={<NewsCategoryPage />} />
+        <Route path="/news/detail/:id" element={<NewsDetailPage />} />
+        {/* m-league积分 */}
+        <Route path="/news/m-league" element={<NewsMLeaguePage />} />
+        {/* m-league赛程安排 */}
+        <Route path="/news/m-league/schedule" element={<MLeagueSchedulePage />} />
+        {/* m-league详细数据 */}
+        <Route path="/news/m-league/stats" element={<MLeagueStatsPage />} />
+        {/* 选手详细信息 */}
+        <Route path="/players/:name" element={<PlayerDetailPage />} />
+        {/* 比赛详情 */}
+        <Route path="/matches/:date/:teams" element={<MatchDetailPage />} />
+        {/* 雀魂游戏信息 */}
+        <Route path="/news/majsoul" element={<NewsMajsoulPage />} />
+        {/* 雀魂游戏信息详情 */}
+        <Route path="/news/majsoul/:title" element={<NewsMajsoulDetailPage />} />
       </Routes>
     </BrowserRouter>
   )

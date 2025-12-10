@@ -53,6 +53,7 @@ export default function PracticePage() {
                 title="牌效率何切" 
                 description="适合新手的牌效练习，学习如何最大化进张。" 
                 difficulty="Easy" 
+                link="/practice/efficiency-calculation"
                 count={150} 
             />
           </div>

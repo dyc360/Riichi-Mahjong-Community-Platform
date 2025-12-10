@@ -18,19 +18,21 @@ export const NewsSubModule = ({
 
 // 模块通用容器组件
 export const ModuleContainer = ({
+  id,
   title,
   description,
   children,
   className = "",
 }: {
+  id?: string;
   title: string;
-  description: string;
+  description?: string;
   children: React.ReactNode;
   className?: string;
 }) => {
   return (
   <div className={`rounded-2xl border p-6 shadow-lg backdrop-blur-sm transition-all hover:shadow-xl border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900 ${className}`}>
-    <div className="mb-4">
+    <div id={id} className="mb-4">
       <h2 className="text-xl font-bold mb-1 text-slate-900 dark:text-white">{title}</h2>
       <p className="text-sm text-slate-600 dark:text-slate-400">{description}</p>
     </div>
@@ -63,28 +65,40 @@ export function HomePageHeader() {
   )
 }
 
+export type NewsCategory = "rules" | "tournament" | "technology" | "communication" | "default";
+
 export type ProNewsProps = {
+    id: number,
     title: string;
     timestamp: string;
+    category: NewsCategory[];
 };
 
 
-export function ProNews({ title, timestamp }: ProNewsProps) {
-    return (
-    <Link 
-        to={`/news/pro/${title}`} 
-        className="group flex items-center justify-between rounded-lg border border-transparent p-3 transition-all hover:border-slate-200 hover:bg-slate-50 hover:shadow-sm dark:hover:border-slate-700 dark:hover:bg-slate-800/50"
-    >
-        <div className="flex items-center gap-3 overflow-hidden">
-            <span className="truncate text-sm font-medium text-slate-700 group-hover:text-indigo-600 dark:text-slate-200 dark:group-hover:text-indigo-400">
-                {title}
-            </span>
-        </div>
-        <span className="shrink-0 text-xs font-medium text-slate-400 group-hover:text-slate-500 dark:text-slate-500 dark:group-hover:text-slate-400">
-            {timestamp}
-        </span>
-    </Link>
-  );
+export function ProNews({ id, title, timestamp, category }: ProNewsProps) {
+  // 截断标题，最多显示9个字
+  const truncateTitle = (text: string, maxLength: number = 9): string => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+  const displayTitle = truncateTitle(title);
+  
+  return (
+  <Link 
+      to={`/news/pro/${title}?id=${id}`} 
+      className="group flex items-center justify-between rounded-lg border border-transparent p-3 transition-all hover:border-slate-200 hover:bg-slate-50 hover:shadow-sm dark:hover:border-slate-700 dark:hover:bg-slate-800/50"
+  >
+      <div className="flex items-center gap-3 overflow-hidden">
+          <span className="truncate text-sm font-medium text-slate-700 group-hover:text-indigo-600 dark:text-slate-200 dark:group-hover:text-indigo-400">
+              {displayTitle}
+          </span>
+      </div>
+      <span className="shrink-0 text-xs font-medium text-slate-400 group-hover:text-slate-500 dark:text-slate-500 dark:group-hover:text-slate-400">
+          {timestamp}
+      </span>
+  </Link>
+);
 }
 
 export type TeamRankProps = {
@@ -131,10 +145,10 @@ export type GameInfoCardProps = {
   link?: string;
 };
 
-export function GameInfoCard({ title, subtitle, imageUrl, link = "#" }: GameInfoCardProps) {
+export function GameInfoCard({ title, subtitle, imageUrl }: GameInfoCardProps) {
   return (
     <Link 
-      to={link}
+      to={`/news/majsoul/${title}`}
       className="group flex items-start gap-4 p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:bg-white hover:shadow-md hover:border-indigo-100 transition-all dark:bg-slate-800/30 dark:border-slate-700/50 dark:hover:bg-slate-800 dark:hover:border-indigo-900/50"
     >
       <div className="flex-1 min-w-0 py-1">
