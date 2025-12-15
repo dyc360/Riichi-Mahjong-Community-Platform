@@ -6,7 +6,7 @@ from .models import Article, Category, TeamRank
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'name', 'slug', 'description']
+        fields = ['id', 'name', 'slug', 'label', 'description']
 
 
 class ArticleListSerializer(serializers.ModelSerializer):

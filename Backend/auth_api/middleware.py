@@ -13,6 +13,8 @@ class JWTAuthentication:
         excluded_paths = [
             '/api/auth/register/',
             '/api/auth/login/',
+            '/api/m-league/',  # M-League数据API公开访问
+            '/api/news_api/',   # 新闻API公开访问
             '/admin/',
             '/health/',
             '/'

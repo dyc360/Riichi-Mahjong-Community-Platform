@@ -1,9 +1,10 @@
 // src/pages/NewsDetailPage.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { HomePageHeader, MainNavigation } from '../components/homePageComp';
 import { useTheme } from '../contexts/ThemeContext';
+import { useCategories, getCategoryDisplayName } from '../contexts/CategoriesContext';
 
 const API_BASE_URL = 'http://localhost:8000/api';
 
@@ -27,9 +28,18 @@ export default function NewsDetailPage() {
   console.log('id:',id);
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { categories } = useCategories();
   const [article, setArticle] = useState<ArticleDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 根据分类名称获取显示标签
+  const categoryDisplayName = useMemo(() => {
+    const categoryName = article?.category_name;
+    if (!categoryName) return '';
+    const category = categories.find(cat => cat.name === categoryName);
+    return category ? getCategoryDisplayName(category) : categoryName;
+  }, [article, categories]);
 
   useEffect(() => {
     const fetchArticleDetail = async () => {
@@ -172,7 +182,7 @@ export default function NewsDetailPage() {
             {/* 分类标签 */}
             <div className="flex items-center justify-between mb-4">
               <span className="inline-block px-3 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full text-sm font-medium">
-                {article.category_name}
+                {categoryDisplayName}
               </span>
               <span className="text-sm text-slate-500 dark:text-slate-400">
                 {article.views} 阅读

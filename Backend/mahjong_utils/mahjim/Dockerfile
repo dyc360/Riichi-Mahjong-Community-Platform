@@ -1,5 +1,5 @@
 # 使用较新的 Go 版本作为构建环境
-FROM golang:latest AS build
+FROM golang:1.22 AS build
 
 # 设置环境变量
 ENV GO111MODULE=on \
@@ -24,7 +24,7 @@ FROM scratch AS prod
 # 从构建阶段复制二进制文件
 COPY --from=build /app/mahjim /mahjim
 
-# 暴露端口 8081
+# 暴露端口 8080
 EXPOSE 8080
 
 # 启动服务

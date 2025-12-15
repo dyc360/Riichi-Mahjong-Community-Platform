@@ -1,112 +1,21 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom'
-// import { type ChangeEvent, type FormEvent, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { HomePageHeader } from '../components/homePageComp'
-import { useTheme } from '../contexts/ThemeContext';
 import { NewsSubModule, ModuleContainer, ProNews, TeamRank, GameInfoCard, ForumTopicRank, PracticeCard, MainNavigation } from '../components/homePageComp'
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8000/api';
-
-// 定义文章接口
-interface Article {
-	id: number;
-	title: string;
-	content: string;
-	summary: string;
-	cover_image: string | null;
-	category_name: string;
-	author_name: string;
-	published_at: string;
-	views: number;
-	status: string;
-	created_at: string;
-	updated_at: string;
-}
-
-// 将 category_name映射到NewsCategory类型
-const mapCategoryNameToNewsCategory = (categoryName: string): string[] => {
-	const categoryMap: Record<string, string[]> = {
-		'rules': ['rules'],
-		'tournament': ['tournament'],
-		'communication': ['communication'],
-		'technology': ['technology'],
-		'industry': ['rules'],
-		'赛事': ['tournament'],
-		'技术': ['technology'],
-		'交流': ['communication']
-	};
-
-	return categoryMap[categoryName.toLowerCase()] || ['default'];
-};
-
-// 将发布时间转换为相对时间
-const formatRelativeTime = (publishedAt: string): string => {
-	const publishedDate = new Date(publishedAt);
-	const now = new Date();
-	const diffInMs = now.getTime() - publishedDate.getTime();
-	const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-	const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-	if (diffInHours < 1) {
-		return '刚刚';
-	} else if (diffInHours < 24) {
-		return `${diffInHours}小时前`;
-	} else if (diffInDays < 7) {
-		return `${diffInDays}天前`;
-	} else {
-		return publishedDate.toLocaleDateString('zh-CN', {
-			year: 'numeric',
-			month: 'numeric',
-			day: 'numeric'
-		});
-	}
-};
+import { useNews } from '../contexts/NewsContext';
+import { useMLeague } from '../contexts/MLeagueContext';
 
 export default function HomePage() {
-	const [industryNews, setIndustryNews] = useState<any[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
-	// 获取文章列表
-	useEffect(() => {
-		const fetchArticles = async () => {
-			try {
-				setLoading(true);
-				setError(null);
-
-				// 调用后端 API 获取文章列表
-				const response = await axios.get<Article[]>(`${API_BASE_URL}/news_api/articles/`);
-
-				// 将Article转换为ProNews组件所需的格式
-				const transformedNews = response.data
-					.slice(0, 4)
-					.map(article => ({
-						id: article.id,
-						title: article.title,
-						timestamp: formatRelativeTime(article.published_at),
-						category: mapCategoryNameToNewsCategory(article.category_name)
-					}));
-
-				setIndustryNews(transformedNews);
-			} catch (err: any) {
-				console.error('获取首页文章列表失败:', err);
-				setError('获取文章列表失败，请稍后重试');
-				// 如果获取失败，可以回退到模拟数据
-				setIndustryNews([
-					{ id: 1, title: "立直麻将职业联赛新赛季规则调整", timestamp: "2小时前", category: ['rules'] },
-					{ id: 2, title: "国际麻将协会宣布新增赛事项目", timestamp: "3小时前", category: ['tournament'] },
-					{ id: 3, title: "日本职业雀士访问中国交流活动圆满结束", timestamp: "5小时前", category: ['communication'] },
-					{ id: 4, title: "麻将AI研究取得新突破，胜率提升至92%", timestamp: "1天前", category: ['technology'] },
-				]);
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		fetchArticles();
-	}, []);
-
+	const { getLatestNews, loading, error } = useNews();
+	const { rankings: mleagueRankings, loading: mleagueLoading } = useMLeague();
+	
+	// 从 NewsContext 获取最新的4条新闻
+	const industryNews = getLatestNews(4).map(news => ({
+		id: news.id,
+		title: news.title,
+		timestamp: news.timestamp,
+		category: news.category
+	}));
+	//console.log("mleagueRankings", mleagueRankings);
 	return (
 		<>
 			<HomePageHeader />
@@ -118,7 +27,7 @@ export default function HomePage() {
 			<main className="container mx-auto px-4 py-8">
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 					{/* 新闻浏览模块  */}
-					<NewsModule industryNews={industryNews} loading={loading} error={error} />
+					<NewsModule industryNews={industryNews} loading={loading} error={error} mleagueRankings={mleagueRankings} mleagueLoading={mleagueLoading} />
 
 					{/* 论坛交流模块*/}
 					<ForumModule />
@@ -137,9 +46,11 @@ interface NewsModuleProps {
 	industryNews: any[];
 	loading: boolean;
 	error: string | null;
+	mleagueRankings: any[];
+	mleagueLoading: boolean;
 }
 
-const NewsModule = ({ industryNews, loading, error }: NewsModuleProps) => (
+const NewsModule = ({ industryNews, mleagueRankings, mleagueLoading }: NewsModuleProps) => (
 	<ModuleContainer
 		id="news"
 		title="新闻浏览"
@@ -170,18 +81,29 @@ const NewsModule = ({ industryNews, loading, error }: NewsModuleProps) => (
 
 			{/*M-League联赛积分榜子模块*/}
 			<NewsSubModule title="M-League联赛积分榜">
-				<div className="space-y-2">
-					<TeamRank rank={1} teamName="風林火山" score="+602.5" />
-					<TeamRank rank={2} teamName="麻雀格闘倶楽部" score="+495.8" />
-					<TeamRank rank={3} teamName="BEAST" score="+54.1" />
-					<TeamRank rank={4} teamName="ドリブンズ" score="+8.2" />
-					<TeamRank rank={5} teamName="Pirates" score="-92.6" />
-				</div>
-				<div className="mt-3 text-right">
-					<Link to="/news#m-league" className="text-xs text-indigo-500 hover:text-indigo-300 dark:text-indigo-400">
-						完整排名 →
-					</Link>
-				</div>
+				{mleagueLoading ? (
+					<div className="flex justify-center items-center h-32">
+						<div className="text-slate-600 dark:text-slate-400 text-sm">加载中...</div>
+					</div>
+				) : (
+					<>
+						<div className="space-y-2">
+							{mleagueRankings.slice(0, 5).map(team => (
+								<TeamRank
+									key={team.id || team.rank}
+									rank={team.rank}
+									teamName={team.team_name}
+									score={team.score}
+								/>
+							))}
+						</div>
+						<div className="mt-3 text-right">
+							<Link to="/news#m-league" className="text-xs text-indigo-500 hover:text-indigo-300 dark:text-indigo-400">
+								完整排名 →
+							</Link>
+						</div>
+					</>
+				)}
 			</NewsSubModule>
 
 			{/*雀魂游戏信息子模块*/}
