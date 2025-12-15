@@ -81,7 +81,7 @@ DATABASES = {
         'NAME': 'mahjong_db',  
         'USER': 'majhub_developer',       
         'PASSWORD': 'mahjong123',
-        'HOST': '183.173.104.29',   # 数据库主机
+        'HOST': '101.5.195.10',   # 数据库主机
         'PORT': '3306',        # 数据库端口
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
@@ -96,20 +96,20 @@ DATABASES = {
 
 # 使用 MySQL
 # 请确保已安装 mysqlclient: pip install mysqlclient
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'mahjong_db',  
-        'USER': 'majhub_developer',       
-        'PASSWORD': 'mahjong123',
-        'HOST': 'localhost',   # 数据库主机
-        'PORT': '3306',        # 数据库端口
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            'charset': 'utf8mb4',
-        },
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'mahjong_db',  
+#         'USER': 'majhub_developer',       
+#         'PASSWORD': 'mahjong123',
+#         'HOST': 'localhost',   # 数据库主机
+#         'PORT': '3306',        # 数据库端口
+#         'OPTIONS': {
+#             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+#             'charset': 'utf8mb4',
+#         },
+#     }
+# }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
