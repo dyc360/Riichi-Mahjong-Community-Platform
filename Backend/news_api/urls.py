@@ -8,7 +8,7 @@ urlpatterns = [
     path('articles/', views.ArticleListView.as_view(), name='article-list'),
     path('articles/<int:id>/', views.ArticleDetailView.as_view(), name='article-detail'),
     path('industry/', views.IndustryNewsView.as_view(), name='industry-news'),
-    path('m-league/rankings/', views.MLeagueRankingView.as_view(), name='mleague-rankings'),
+    #path('m-league/rankings/', views.MLeagueRankingView.as_view(), name='mleague-rankings'),
     path('majsoul/', views.MajsoulNewsView.as_view(), name='majsoul-news'),
     path('home/', views.news_home_data, name='news-home-data'),
 ]

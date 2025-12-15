@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomePageHeader, ModuleContainer, ProNews, TeamRank, GameInfoCard, MainNavigation } from '../components/homePageComp';
 import { useTheme } from '../contexts/ThemeContext';
-
-// 导入新闻数据
-import { INDUSTRY_NEWS } from './NewsPage';
+import { useNews } from '../contexts/NewsContext';
 
 // 新闻分类
 const NEWS_CATEGORIES = [
@@ -19,6 +17,7 @@ const NEWS_PER_PAGE = 5;
 
 export default function NewsArchivePage() {
   const { theme } = useTheme();
+  const { newsList, loading, error } = useNews();
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -39,9 +38,14 @@ export default function NewsArchivePage() {
     navigate(-1);
   };
 
-  // 根据分类筛选新闻
+  // 根据分类筛选新闻（从 NewsContext 获取）
   const filteredNews = activeCategory === 'all' || activeCategory === 'industry' 
-    ? INDUSTRY_NEWS 
+    ? newsList.map(news => ({
+        id: news.id,
+        title: news.title,
+        timestamp: news.timestamp,
+        category: news.category
+      }))
     : []; 
 
   // 计算总页数

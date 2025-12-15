@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'auth_api',
     'mahjong_api',
     'news_api',
+    'mleague',  # M-League数据抓取模块
 ]
 
 AUTH_USER_MODEL = 'auth_api.CustomUser'
@@ -81,6 +82,27 @@ DATABASES = {
         'USER': 'majhub_developer',       
         'PASSWORD': 'mahjong123',
         'HOST': '183.173.104.29',   # 数据库主机
+        'PORT': '3306',        # 数据库端口
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+        },
+    }
+}
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
+# 使用 MySQL
+# 请确保已安装 mysqlclient: pip install mysqlclient
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'mahjong_db',  
+        'USER': 'majhub_developer',       
+        'PASSWORD': 'mahjong123',
+        'HOST': 'localhost',   # 数据库主机
         'PORT': '3306',        # 数据库端口
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
