@@ -1,69 +1,33 @@
 // src/pages/CategoryNewsPage.tsx
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
 import { HomePageHeader, MainNavigation, ProNews } from '../components/homePageComp';
-
-const API_BASE_URL = 'http://localhost:8000/api';
-
-interface Article {
-  id: number;
-  title: string;
-  summary: string;
-  cover_image: string | null;
-  category_name: string;
-  author_name: string;
-  published_at: string;
-  views: number;
-  status: string;
-}
+import { useCategories, getCategoryDisplayName } from '../contexts/CategoriesContext';
+import { useNews } from '../contexts/NewsContext';
 
 export default function CategoryNewsPage() {
   const { category } = useParams<{ category: string }>();
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { categories } = useCategories();
+  const { getNewsByCategory, loading, error } = useNews();
 
-  useEffect(() => {
-    const fetchCategoryArticles = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await axios.get<Article[]>(`${API_BASE_URL}/news/category/${category}/`);
-        setArticles(response.data);
-      } catch (err) {
-        console.error('获取分类文章失败:', err);
-        setError('获取文章列表失败');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // 根据 slug 获取分类显示名称（优先使用标签）
+  const categoryDisplayName = useMemo(() => {
+    if (!category) return '';
+    const foundCategory = categories.find(cat => cat.slug === category);
+    return foundCategory ? getCategoryDisplayName(foundCategory) : category;
+  }, [category, categories]);
 
-    if (category) {
-      fetchCategoryArticles();
-    }
-  }, [category]);
+  // 从 NewsContext 获取该分类的新闻
+  const articles = useMemo(() => {
+    if (!category) return [];
+    return getNewsByCategory(category).map(news => ({
+      id: news.id,
+      title: news.title,
+      timestamp: news.timestamp,
+      category: news.category
+    }));
+  }, [category, getNewsByCategory]);
 
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return '刚刚';
-    if (diffInHours < 24) return `${diffInHours}小时前`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays}天前`;
-  };
-
-  const getCategoryName = (slug: string) => {
-    const categoryMap: { [key: string]: string } = {
-      'industry': '行业资讯',
-      'majsoul': '雀魂动态',
-      'm-league': 'M-League'
-    };
-    return categoryMap[slug] || slug;
-  };
 
   if (loading) {
     return (
@@ -95,7 +59,7 @@ export default function CategoryNewsPage() {
         </div>
         
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-          {getCategoryName(category!)}
+          {categoryDisplayName}
         </h1>
         <p className="text-slate-600 dark:text-slate-400 mb-8">
           查看所有相关文章
@@ -109,12 +73,13 @@ export default function CategoryNewsPage() {
 
         <div className="space-y-4">
           {articles.map(article => (
-            <Link key={article.id} to={`/news/article/${article.id}`}>
-              <ProNews 
-                title={article.title} 
-                timestamp={formatTime(article.published_at)} 
-              />
-            </Link>
+            <ProNews 
+              key={article.id}
+              id={article.id}
+              title={article.title} 
+              timestamp={article.timestamp}
+              category={article.category}
+            />
           ))}
           {articles.length === 0 && !error && (
             <div className="text-center py-12 text-slate-500 dark:text-slate-400">

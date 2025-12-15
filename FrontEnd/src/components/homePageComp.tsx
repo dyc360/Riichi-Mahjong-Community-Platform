@@ -25,7 +25,7 @@ export const ModuleContainer = ({
   className = "",
 }: {
   id?: string;
-  title: string;
+  title?: string;
   description?: string;
   children: React.ReactNode;
   className?: string;
@@ -65,7 +65,8 @@ export function HomePageHeader() {
   )
 }
 
-export type NewsCategory = "rules" | "tournament" | "technology" | "communication" | "default";
+// NewsCategory 现在使用动态类型，从后端获取
+export type NewsCategory = string;
 
 export type ProNewsProps = {
     id: number,

@@ -1,0 +1,321 @@
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { HomePageHeader, ModuleContainer } from '../components/homePageComp';
+import { useTheme } from '../contexts/ThemeContext';
+import { HOT_POSTS, LATEST_POSTS } from './ForumPage';
+import type { ForumPost } from './ForumSectionPage';
+
+// 帖子项组件
+const PostItem = ({
+    post,
+    isHot,
+    activeTopic
+}: {
+    post: ForumPost & { lastReply?: { author: string; time: string } },
+    isHot: boolean,
+    activeTopic: string
+}) => {
+    return (
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow">
+            <div className="flex gap-4">
+                {/* 作者头像 */}
+                <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                    <img src={post.avatar} alt={post.author} className="w-full h-full object-cover" />
+                </div>
+
+                {/* 帖子内容 */}
+                <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap gap-2 mb-1">
+                        {post.tags.map((tag, index) => (
+                            <Link
+                                key={index}
+                                to={`/forum/topic/${tag}`}
+                                className={`px-2 py-0.5 text-xs rounded-full transition-colors ${tag === activeTopic
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800/30'
+                                    }`}
+                            >
+                                {tag}
+                            </Link>
+                        ))}
+                        {isHot && (
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                                热门
+                            </span>
+                        )}
+                    </div>
+
+                    <Link to={`/forum/post/${encodeURIComponent(post.title)}`} className="hover:underline">
+                        <h3 className="font-medium text-slate-900 dark:text-white mb-1 truncate">{post.title}</h3>
+                    </Link>
+
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
+                            <span>{post.author}</span>
+                            <span className="mx-2">·</span>
+                            <span>{post.time}</span>
+                        </div>
+
+                        <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
+                            <span>👁️ {post.views}</span>
+                            <span>💬 {post.replies}</span>
+
+                            {isHot && post.lastReply && (
+                                <div className="text-right">
+                                    <div className="text-xs">最后回复</div>
+                                    <div className="text-xs">{post.lastReply.author}</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default function ForumTopicPage() {
+    const { theme } = useTheme();
+    const { topic } = useParams<{ topic: string }>(); // 从URL获取标签名称
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const [posts, setPosts] = useState<(ForumPost & {
+        lastReply?: { author: string; time: string },
+        isHot?: boolean
+    })[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // 获取排序方式和当前页码
+    const sortType = searchParams.get('sort') || 'latest';
+    const currentPage = parseInt(searchParams.get('page') || '1', 10) || 1;
+
+    const postsPerPage = 10;
+
+    useEffect(() => {
+        const fetchTopicPosts = async () => {
+            try {
+
+                // 合并热门帖子和最新帖子，并标记来源
+                const allPosts = [
+                    ...HOT_POSTS.map(post => ({ ...post, isHot: true })),
+                    ...LATEST_POSTS.map(post => ({ ...post, isHot: false }))
+                ];
+
+                // 筛选出包含当前标签的帖子
+                const topicPosts = allPosts.filter(post =>
+                    topic && post.tags.some(t => t.toLowerCase() === topic.toLowerCase())
+                );
+
+                // 根据排序类型排序
+                let sortedPosts = [...topicPosts];
+                if (sortType === 'hot') {
+                    // 热门排序：按浏览量降序
+                    sortedPosts.sort((a, b) => (b.views || 0) - (a.views || 0));
+                } else {
+                    // 最新排序：按时间降序
+                    sortedPosts.sort((a, b) => {
+                        // 简单的时间排序逻辑，可能需要更复杂的日期比较
+                        if (a.time.includes('分钟前') && b.time.includes('小时前')) return -1;
+                        if (a.time.includes('小时前') && b.time.includes('天前')) return -1;
+                        return b.time.localeCompare(a.time);
+                    });
+                }
+
+                setPosts(sortedPosts);
+            } catch (error) {
+                console.error('获取标签帖子失败:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTopicPosts();
+    }, [topic, sortType]);
+
+    // 处理排序变更
+    const handleSortChange = (newSortType: string) => {
+        navigate(`?sort=${newSortType}&page=1`, { replace: true });
+    };
+
+    // 处理页码变更
+    const handlePageChange = (page: number) => {
+        if (page < 1 || page > Math.ceil(posts.length / postsPerPage)) return;
+
+        navigate(`?sort=${sortType}&page=${page}`, { replace: true });
+        window.scrollTo(0, 0);
+    };
+
+    // 计算分页
+    const totalPages = Math.ceil(posts.length / postsPerPage);
+    const indexOfLastPost = currentPage * postsPerPage;
+    const indexOfFirstPost = indexOfLastPost - postsPerPage;
+    const currentPosts = posts.slice(indexOfFirstPost, indexOfLastPost);
+
+    const handleGoBack = () => {
+        navigate(-1);
+    };
+
+    //加载状态
+    if (loading) {
+        return (
+            <>
+                <HomePageHeader />
+                <main className="container mx-auto px-4 py-8">
+                    <div className="flex justify-center items-center h-60">
+                        <div className="text-center">
+                            <div className="inline-block w-12 h-12 border-4 border-indigo-200 dark:border-indigo-700 border-t-indigo-600 dark:border-t-indigo-400 rounded-full animate-spin mb-4"></div>
+                            <p className="text-slate-600 dark:text-slate-400">加载标签帖子中...</p>
+                        </div>
+                    </div>
+                </main>
+            </>
+        );
+    }
+
+    // 处理标签不存在的情况
+    if (!topic) {
+        return (
+            <>
+                <HomePageHeader />
+                <main className="container mx-auto px-4 py-8">
+                    <div className="text-center py-12">
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">标签不存在</h2>
+                        <button
+                            onClick={handleGoBack}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+                        >
+                            返回上一页
+                        </button>
+                    </div>
+                </main>
+            </>
+        );
+    }
+
+    return (
+        <>
+            <HomePageHeader />
+
+            <nav className="container mx-auto px-4 py-4 border-b border-gray-200 dark:border-slate-700">
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        onClick={handleGoBack}
+                        className="px-4 py-2 rounded-lg text-sm font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                    >
+                        <svg className="inline-block w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        返回上一页
+                    </button>
+                </div>
+            </nav>
+
+            <main className="container mx-auto px-4 py-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                        标签: #{topic}
+                    </h1>
+                    <Link
+                        to="/forum/create-post"
+                        className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg self-start"
+                    >
+                        <span className="text-lg">✏️</span>
+                        <span>发布新帖</span>
+                    </Link>
+                </div>
+
+                <ModuleContainer
+                    title={`标签 "#${topic}" 相关帖子`}
+                    description={`共 ${posts.length} 条相关内容`}
+                >
+                    {/* 排序选项 */}
+                    <div className="flex flex-wrap items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-slate-700">
+                        <div className="text-xl font-bold text-slate-900 dark:text-white">
+                            相关帖子
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-slate-500 dark:text-slate-400">排序方式:</span>
+                            <button
+                                onClick={() => handleSortChange('latest')}
+                                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${sortType === 'latest'
+                                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                    }`}
+                            >
+                                最新发布
+                            </button>
+                            <button
+                                onClick={() => handleSortChange('hot')}
+                                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${sortType === 'hot'
+                                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                    }`}
+                            >
+                                热门推荐
+                            </button>
+                        </div>
+                    </div>
+
+                    {currentPosts.length > 0 ? (
+                        <>
+                            <div className="space-y-4">
+                                {currentPosts.map(post => (
+                                    <PostItem
+                                        key={post.id}
+                                        post={post}
+                                        isHot={post.isHot || false}
+                                        activeTopic={topic}
+                                    />
+                                ))}
+                            </div>
+
+                            {/* 分页控件 */}
+                            {totalPages > 1 && (
+                                <div className="mt-8 flex justify-center items-center gap-2">
+                                    <button
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        上一页
+                                    </button>
+
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                        <button
+                                            key={page}
+                                            onClick={() => handlePageChange(page)}
+                                            className={`w-8 h-8 flex items-center justify-center rounded ${page === currentPage
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'border hover:bg-gray-100 dark:hover:bg-slate-700'
+                                                }`}
+                                        >
+                                            {page}
+                                        </button>
+                                    ))}
+
+                                    <button
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === totalPages}
+                                        className="px-3 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        下一页
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="py-12 text-center">
+                            <p className="text-slate-500 dark:text-slate-400">暂无与该标签相关的帖子</p>
+                            <Link
+                                to="/forum/create-post"
+                                className="inline-block mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+                            >
+                                发布相关帖子
+                            </Link>
+                        </div>
+                    )}
+                </ModuleContainer>
+            </main>
+        </>
+    );
+}

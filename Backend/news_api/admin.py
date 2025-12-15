@@ -8,9 +8,10 @@ from .models import Category, Article, TeamRank
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'slug', 'created_at']
+    list_display = ['name', 'slug', 'label', 'created_at']
     prepopulated_fields = {'slug': ('name',)}
-    search_fields = ['name']
+    search_fields = ['name', 'label']
+    fields = ['name', 'slug', 'label', 'description']
 
 
 @admin.register(Article)

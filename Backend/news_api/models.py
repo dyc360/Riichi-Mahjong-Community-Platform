@@ -10,6 +10,7 @@ User = get_user_model()
 class Category(models.Model):
     name = models.CharField(max_length=100, verbose_name="分类名称")
     slug = models.SlugField(max_length=100, unique=True, verbose_name="URL标识")
+    label = models.CharField(max_length=50, blank=True, verbose_name="显示标签", help_text="如果设置，前端将显示此标签而不是分类名称")
     description = models.TextField(blank=True, verbose_name="描述")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
 

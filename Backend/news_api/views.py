@@ -53,8 +53,24 @@ class MLeagueRankingView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        season = self.request.query_params.get('season', '2023赛季')
-        return TeamRank.objects.filter(season=season).order_by('rank')
+        # 获取最新赛季的数据（按last_updated排序，取最新的赛季）
+        # 首先获取所有有数据的赛季
+        seasons = TeamRank.objects.values_list('season', flat=True).distinct()
+        if not seasons:
+            return TeamRank.objects.none()
+        
+        # 找到最新更新的赛季
+        latest_season = None
+        latest_time = None
+        for season in seasons:
+            latest_rank = TeamRank.objects.filter(season=season).order_by('-last_updated').first()
+            if latest_rank and (not latest_time or latest_rank.last_updated > latest_time):
+                latest_time = latest_rank.last_updated
+                latest_season = season
+        
+        if latest_season:
+            return TeamRank.objects.filter(season=latest_season).order_by('rank')
+        return TeamRank.objects.none()
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -102,7 +118,17 @@ def news_home_data(request):
             category=majsoul_category
         ).order_by('-published_at')[:4] if majsoul_category else []
 
-        rankings = TeamRank.objects.filter(season='2023赛季').order_by('rank')
+        # 获取最新赛季的排名数据
+        seasons = TeamRank.objects.values_list('season', flat=True).distinct()
+        latest_season = None
+        latest_time = None
+        for season in seasons:
+            latest_rank = TeamRank.objects.filter(season=season).order_by('-last_updated').first()
+            if latest_rank and (not latest_time or latest_rank.last_updated > latest_time):
+                latest_time = latest_rank.last_updated
+                latest_season = season
+        
+        rankings = TeamRank.objects.filter(season=latest_season).order_by('rank') if latest_season else TeamRank.objects.none()
 
         return Response({
             'success': True,
