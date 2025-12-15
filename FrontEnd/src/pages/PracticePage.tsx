@@ -20,7 +20,7 @@ export default function PracticePage() {
     <>
       <HomePageHeader />
       
-      {/* Navigation */}
+      {/* 导航栏 */}
       <nav className="container mx-auto px-4 py-4 border-b border-gray-200 dark:border-slate-700">
         <MainNavigation />
       </nav>
