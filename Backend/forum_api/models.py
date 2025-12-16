@@ -151,3 +151,76 @@ class ReplyLike(models.Model):
 
     def __str__(self) -> str:  # type: ignore[override]
         return f"{self.user.username} 点赞了回复 {self.reply_id}"
+
+
+class UserFollow(models.Model):
+    """用户关注关系"""
+    follower = models.ForeignKey(
+        User,
+        related_name="following",
+        on_delete=models.CASCADE,
+        verbose_name="关注者"
+    )
+    following = models.ForeignKey(
+        User,
+        related_name="followers",
+        on_delete=models.CASCADE,
+        verbose_name="被关注者"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="关注时间")
+
+    class Meta:
+        verbose_name = "用户关注"
+        verbose_name_plural = verbose_name
+        unique_together = [["follower", "following"]]
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:  # type: ignore[override]
+        return f"{self.follower.username} 关注了 {self.following.username}"
+
+
+class Notification(models.Model):
+    """通知"""
+    NOTIFICATION_TYPES = [
+        ('new_post', '新帖通知'),
+        ('reply', '回复通知'),
+        ('like', '点赞通知'),
+    ]
+
+    recipient = models.ForeignKey(
+        User,
+        related_name="notifications",
+        on_delete=models.CASCADE,
+        verbose_name="接收者"
+    )
+    notification_type = models.CharField(
+        max_length=20,
+        choices=NOTIFICATION_TYPES,
+        verbose_name="通知类型"
+    )
+    title = models.CharField(max_length=200, verbose_name="通知标题")
+    content = models.TextField(verbose_name="通知内容")
+    related_post = models.ForeignKey(
+        ForumPost,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name="相关帖子"
+    )
+    related_reply = models.ForeignKey(
+        ForumReply,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name="相关回复"
+    )
+    is_read = models.BooleanField(default=False, verbose_name="是否已读")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+
+    class Meta:
+        verbose_name = "通知"
+        verbose_name_plural = verbose_name
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:  # type: ignore[override]
+        return f"{self.recipient.username} - {self.title}"

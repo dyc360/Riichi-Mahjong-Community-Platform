@@ -21,7 +21,7 @@ export interface Article {
 	updated_at: string;
 }
 
-// 新闻列表项接口（用于前端显示）
+// 新闻列表项接口
 export interface NewsListItem {
 	id: number;
 	title: string;
@@ -54,7 +54,7 @@ const NewsContext = createContext<NewsContextType | undefined>(undefined);
 
 // 缓存键名
 const CACHE_KEY = 'news_articles_cache';
-const CACHE_DURATION = 2 * 60 * 1000; // 2分钟缓存（新闻更新较频繁）
+const CACHE_DURATION = 2 * 60 * 1000; // 2分钟缓存
 
 interface CachedData {
 	articles: Article[];
@@ -84,7 +84,7 @@ const formatRelativeTime = (publishedAt: string): string => {
 	}
 };
 
-// 将 Article 转换为 NewsListItem
+// 将 Article转换为NewsListItem
 const transformArticleToNewsItem = (article: Article, categorySlugMap: Map<string, string>): NewsListItem => {
 	return {
 		id: article.id,
@@ -103,7 +103,7 @@ const transformArticleToNewsItem = (article: Article, categorySlugMap: Map<strin
 
 // 内部组件，用于访问 CategoriesContext
 function NewsProviderInner({ children }: { children: ReactNode }) {
-	// 获取分类列表（必须在 Provider 内部调用）
+	// 获取分类列表
 	const { categories } = useCategories();
 
 	const [articles, setArticles] = useState<Article[]>([]);
@@ -119,13 +119,11 @@ function NewsProviderInner({ children }: { children: ReactNode }) {
 			const map = new Map<string, string>();
 			categories.forEach(cat => {
 				map.set(cat.name, cat.slug);
-				map.set(cat.slug, cat.slug); // 也支持通过 slug 查找
+				map.set(cat.slug, cat.slug);
 			});
 			setCategorySlugMap(map);
 		}
 	}, [categories]);
-
-	// 转换文章列表（移除这个函数，直接在需要的地方转换）
 
 	// 获取新闻数据
 	const fetchNews = useCallback(async (useCache: boolean = true) => {
@@ -137,7 +135,6 @@ function NewsProviderInner({ children }: { children: ReactNode }) {
 					try {
 						const cachedData: CachedData = JSON.parse(cached);
 						const now = Date.now();
-						// 如果缓存未过期，直接使用
 						if (now - cachedData.timestamp < CACHE_DURATION) {
 							setArticles(cachedData.articles);
 							// 使用当前的 categorySlugMap 转换
@@ -180,7 +177,7 @@ function NewsProviderInner({ children }: { children: ReactNode }) {
 			console.error('获取新闻列表失败:', err);
 			setError('获取新闻列表失败，请稍后重试');
 
-			// 如果请求失败，尝试使用缓存（即使过期）
+			// 如果请求失败，尝试使用缓存
 			const cached = localStorage.getItem(CACHE_KEY);
 			if (cached) {
 				try {
@@ -205,7 +202,7 @@ function NewsProviderInner({ children }: { children: ReactNode }) {
 		}
 	}, [categorySlugMap]); // 只依赖 categorySlugMap
 
-	// 刷新新闻（强制从服务器获取）
+	// 刷新新闻
 	const refreshNews = useCallback(async () => {
 		await fetchNews(false);
 	}, [fetchNews]);
@@ -237,7 +234,7 @@ function NewsProviderInner({ children }: { children: ReactNode }) {
 		);
 	}, [newsList]);
 
-	// 获取最新新闻（按发布时间排序）
+	// 获取最新新闻
 	const getLatestNews = useCallback((limit: number = 10): NewsListItem[] => {
 		// 从 articles 中获取发布时间进行排序
 		return newsList
@@ -250,7 +247,7 @@ function NewsProviderInner({ children }: { children: ReactNode }) {
 			.map(item => item.news);
 	}, [newsList, articles]);
 
-	// 初始化加载（只在组件挂载时执行一次）
+	// 初始化加载
 	useEffect(() => {
 		// 延迟执行，确保 CategoriesProvider 已经初始化
 		const timer = setTimeout(() => {
@@ -263,7 +260,6 @@ function NewsProviderInner({ children }: { children: ReactNode }) {
 	// 当分类映射更新时，重新转换文章列表
 	useEffect(() => {
 		if (articles.length > 0) {
-			// 即使 categorySlugMap 为空也转换，只是分类为空数组
 			const transformed = articles
 				.filter(article => article.status === 'published')
 				.map(article => transformArticleToNewsItem(article, categorySlugMap));

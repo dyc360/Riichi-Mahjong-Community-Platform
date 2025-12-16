@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+import datetime
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,6 +26,7 @@ INSTALLED_APPS = [
     'mahjong_api',
     'news_api',
     'mleague',  # M-League数据抓取模块
+    'forum_api',  # 论坛模块
 ]
 
 AUTH_USER_MODEL = 'auth_api.CustomUser'
@@ -64,52 +66,22 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# 使用 SQLite (注释掉以切换到 MySQL)
-# 使用 SQLite 快速开始（推荐用于开发）
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
 # 使用 MySQL
 # 请确保已安装 mysqlclient: pip install mysqlclient
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'mahjong_db',  
-        'USER': 'majhub_developer',       
+        'NAME': 'mahjong_db',
+        'USER': 'majhub_developer',
         'PASSWORD': 'mahjong123',
-        'HOST': '101.5.195.10',   # 数据库主机
-        'PORT': '3306',        # 数据库端口
+        'HOST': '183.173.105.236',  # 数据库主机
+        'PORT': '3306',         # 数据库端口
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'charset': 'utf8mb4',
         },
     }
 }
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
-# 使用 MySQL
-# 请确保已安装 mysqlclient: pip install mysqlclient
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'mahjong_db',  
-#         'USER': 'majhub_developer',       
-#         'PASSWORD': 'mahjong123',
-#         'HOST': 'localhost',   # 数据库主机
-#         'PORT': '3306',        # 数据库端口
-#         'OPTIONS': {
-#             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-#             'charset': 'utf8mb4',
-#         },
-#     }
-# }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -152,8 +124,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-import datetime
 
+# JWT 配置
 JWT_SECRET_KEY = 'your-jwt-secret-key-change-this-in-production'
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_DELTA = datetime.timedelta(days=7)  # 使用 datetime.timedelta

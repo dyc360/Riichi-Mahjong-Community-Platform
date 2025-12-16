@@ -1,3 +1,5 @@
+import typography from '@tailwindcss/typography';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class', // 启用类模式的深色模式
@@ -16,5 +18,7 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    typography,
+  ],
 }

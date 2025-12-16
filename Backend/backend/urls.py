@@ -8,6 +8,7 @@ urlpatterns = [
     path('api/auth/', include('auth_api.urls')),
     path('api/mahjong/', include('mahjong_api.urls')),
     path('api/m-league/', include('mleague.urls')),  # M-League抓取器API
+    path('api/forum/', include('forum_api.urls')),   # 论坛API
     path('health/', HealthCheckView.as_view(), name='health-check'),
     path('', home_view, name='home'),
 ]

@@ -28,6 +28,7 @@ import ForumSectionPage from "./pages/ForumSectionPage.tsx"
 import ForumHotPage from "./pages/ForumHotPage.tsx"
 import ForumLatestPage from "./pages/ForumLatestPage.tsx"
 import ForumTopicPage from "./pages/ForumTopicPage.tsx"
+import NotificationPage from "./pages/NotificationPage.tsx"
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
 
@@ -57,6 +58,7 @@ function App() {
 				<Route path="/forum/hot" element={<ForumHotPage />} />
 				<Route path="/forum/latest" element={<ForumLatestPage />} />
 				<Route path="/forum/topic/:topic" element={<ForumTopicPage />} />
+				<Route path="/notifications" element={<NotificationPage />} />
 				{/* 何切练习 */}
 				<Route path="/practice" element={<PracticePage />} />
 				<Route path="/practice/point-calculation" element={<PointCalculationPage />} />

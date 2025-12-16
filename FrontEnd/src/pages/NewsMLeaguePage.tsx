@@ -1,10 +1,11 @@
-import { Fragment, useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Fragment, useState, useEffect, useMemo, useCallback } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { HomePageHeader, ModuleContainer } from '../components/homePageComp';
 import { useMLeague } from '../contexts/MLeagueContext';
 
 export default function MLeaguePage() {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const {
 		rankings,
 		playerStats,
@@ -15,21 +16,98 @@ export default function MLeaguePage() {
 		schedule,
 		scheduleLoading,
 		fetchSchedule,
-		getRecentMatches,
-		getUpcomingMatches
+		clearSchedule
 	} = useMLeague();
 	const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
 
-	// 在数据未加载时获取当前月份的比赛数据
+	// 获取当前赛季的年份范围
+	const getCurrentSeasonRange = useMemo(() => {
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = now.getMonth() + 1;
+		// M-League赛季从9月开始，到次年5月结束
+		const seasonStartYear = month >= 9 ? year : year - 1;
+		const seasonEndYear = seasonStartYear + 1;
+		return { startYear: seasonStartYear, endYear: seasonEndYear };
+	}, []);
+
+	// 检查比赛是否属于当前赛季
+	const isCurrentSeasonMatch = useCallback((match: any) => {
+		const { startYear, endYear } = getCurrentSeasonRange;
+		const matchYear = match.year;
+		const matchMonth = match.month;
+		
+		// 当前赛季：startYear的9-12月 或 endYear的1-5月
+		return (matchYear === startYear && matchMonth >= 9 && matchMonth <= 12) ||
+			   (matchYear === endYear && matchMonth >= 1 && matchMonth <= 5);
+	}, [getCurrentSeasonRange]);
+
+	// 在组件挂载或页面访问时，确保加载当前赛季的数据
 	useEffect(() => {
-		if (schedule.length === 0 && !scheduleLoading) {
+		const loadCurrentSeasonData = async () => {
+			if (scheduleLoading) return; // 如果正在加载，等待完成
+
 			const now = new Date();
-			const currentYear = now.getFullYear();
 			const currentMonth = now.getMonth() + 1;
-			// 使用缓存
-			fetchSchedule(currentYear, currentMonth, true);
-		}
-	}, [schedule.length, scheduleLoading, fetchSchedule]);
+			const { startYear, endYear } = getCurrentSeasonRange;
+
+			// 检查 schedule 中是否包含非当前赛季的数据
+			const hasNonCurrentSeasonData = schedule.some(match => {
+				const matchYear = match.year;
+				const matchMonth = match.month;
+				const isCurrentSeason = 
+					(matchYear === startYear && matchMonth >= 9 && matchMonth <= 12) ||
+					(matchYear === endYear && matchMonth >= 1 && matchMonth <= 5);
+				return !isCurrentSeason;
+			});
+
+			// 如果包含非当前赛季的数据，清除并重新加载
+			if (hasNonCurrentSeasonData) {
+				clearSchedule();
+			}
+
+			// 检查是否已有当前赛季的数据
+			const hasCurrentSeasonData = schedule.some(match => {
+				const matchYear = match.year;
+				const matchMonth = match.month;
+				return (matchYear === startYear && matchMonth >= 9 && matchMonth <= 12) ||
+					   (matchYear === endYear && matchMonth >= 1 && matchMonth <= 5);
+			});
+
+			// 如果没有当前赛季的数据，则加载
+			if (!hasCurrentSeasonData || hasNonCurrentSeasonData) {
+				// 根据当前月份决定加载哪些月份的数据
+				if (currentMonth >= 9) {
+					// 当前在赛季前半段（9-12月），加载9月到当前月份的数据
+					for (let month = 9; month <= currentMonth; month++) {
+						await fetchSchedule(startYear, month, true, true);
+					}
+					// 也加载下一年的1-5月数据（未来比赛）
+					for (let month = 1; month <= 5; month++) {
+						await fetchSchedule(endYear, month, true, true);
+					}
+				} else {
+					// 当前在赛季后半段（1-5月），需要加载：
+					// 1. 上一年的9-12月（已完成比赛）
+					for (let month = 9; month <= 12; month++) {
+						await fetchSchedule(startYear, month, true, true);
+					}
+					// 2. 当前年的1月到当前月份
+					for (let month = 1; month <= currentMonth; month++) {
+						await fetchSchedule(endYear, month, true, true);
+					}
+					// 3. 当前年剩余月份（未来比赛）
+					for (let month = currentMonth + 1; month <= 5; month++) {
+						await fetchSchedule(endYear, month, true, true);
+					}
+				}
+			}
+		};
+
+		// 每次页面访问时都检查并加载数据
+		loadCurrentSeasonData();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [location.pathname]); // 当路径变化时执行
 
 	const handleGoBack = () => {
 		navigate(-1);
@@ -74,10 +152,14 @@ export default function MLeaguePage() {
 	// 获取当前赛季
 	const currentSeason = rankings.length > 0 ? rankings[0].season : '';
 
-	// 获取最近完成的比赛
+	// 获取最近完成的比赛（只显示当前赛季）
 	const recentMatches = useMemo(() => {
 		const matches = schedule
-			.filter(match => match.status === 'finished' && match.result)
+			.filter(match => 
+				isCurrentSeasonMatch(match) && 
+				match.status === 'finished' && 
+				match.result
+			)
 			.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 			.slice(0, 5);
 		return matches.map((match, idx) => ({
@@ -86,12 +168,15 @@ export default function MLeaguePage() {
 			day_week: match.day_week,
 			match: match
 		}));
-	}, [schedule]);
+	}, [schedule, isCurrentSeasonMatch]);
 
-	// 获取即将到来的比赛
+	// 获取即将到来的比赛（只显示当前赛季）
 	const upcomingMatches = useMemo(() => {
 		const matches = schedule
-			.filter(match => match.status === 'upcoming')
+			.filter(match => 
+				isCurrentSeasonMatch(match) && 
+				match.status === 'upcoming'
+			)
 			.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 			.slice(0, 4);
 		return matches.map((match, idx) => ({
@@ -102,7 +187,7 @@ export default function MLeaguePage() {
 			teamB: match.teams[1]?.name || '',
 			match: match
 		}));
-	}, [schedule]);
+	}, [schedule, isCurrentSeasonMatch]);
 
 	return (
 		<>
@@ -285,7 +370,7 @@ export default function MLeaguePage() {
 					) : (
 						<div className="space-y-3">
 							{recentMatches.map(match => {
-								// 构建队伍名称字符串用于URL（使用 | 分隔符，避免队伍名称中包含 - 时出错）
+								// 构建队伍名称字符串用于URL
 								const teamsParam = match.match.teams.map(t => t.name).join('|');
 								const matchPath = `/matches/${match.date}/${encodeURIComponent(teamsParam)}`;
 

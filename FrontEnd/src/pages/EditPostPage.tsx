@@ -26,8 +26,8 @@ export default function EditPostPage() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [editorMode, setEditorMode] = useState<'edit' | 'preview' | 'split'>('split'); // 编辑器模式：编辑、预览、分屏
-	const contentTextareaRef = useRef<HTMLTextAreaElement>(null); // 用于操作文本区域
-	const imageInputRef = useRef<HTMLInputElement>(null); // 用于触发文件选择
+	const contentTextareaRef = useRef<HTMLTextAreaElement>(null); // 文本区域
+	const imageInputRef = useRef<HTMLInputElement>(null); // 触发文件选择
 
 	// 加载板块列表
 	useEffect(() => {
@@ -169,7 +169,7 @@ export default function EditPostPage() {
 				tags: formData.tags,
 			});
 
-			// 提交成功后跳转到帖子详情页（使用标题）
+			// 跳转到帖子详情页
 			navigate(`/forum/post/${encodeURIComponent(updatedPost.title)}`, { replace: true });
 		} catch (error: any) {
 			console.error("更新失败:", error);

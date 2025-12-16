@@ -394,7 +394,7 @@ export default function MLeagueStatsPage() {
 													onClick={() => navigate(`/players/${player.player_name}`)}
 												>
 													<td className="py-3 px-4 text-sm font-medium">
-														<span className="inline-block w-6 h-6 rounded-full flex items-center justify-center text-white text-xs mr-1"
+														<span className="inline-block w-6 h-6 rounded-full flex items-center justify-center text-black text-xs mr-1"
 															style={{
 																backgroundColor: player.rank <= 3 ? (
 																	player.rank === 1 ? '#f59e0b' :
