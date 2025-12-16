@@ -21,6 +21,7 @@ export interface ForumPost {
 	id: number;
 	title: string;
 	author_name: string;
+	author_id?: number;
 	section_name: string;
 	views: number;
 	replies_count: number;
@@ -50,6 +51,28 @@ export interface ForumPostDetail extends ForumPost {
 	updated_at: string;
 	replies: ForumReply[];
 	is_liked?: boolean; // 当前用户是否已点赞
+}
+
+// 用户关注接口
+export interface UserFollow {
+	id: number;
+	follower_name: string;
+	following_name: string;
+	created_at: string;
+}
+
+// 通知接口
+export interface Notification {
+	id: number;
+	notification_type: 'new_post' | 'reply' | 'like';
+	title: string;
+	content: string;
+	related_post: number | null;
+	related_post_title?: string;
+	related_reply?: number | null;
+	related_reply_id?: number;
+	is_read: boolean;
+	created_at: string;
 }
 
 interface ForumContextType {
@@ -85,6 +108,12 @@ interface ForumContextType {
 	createReply: (postId: number, content: string, parentId?: number) => Promise<ForumReply>;
 	togglePostLike: (postId: number, action?: 'like' | 'unlike' | 'toggle') => Promise<{ id: number; likes: number; is_liked: boolean }>;
 	toggleReplyLike: (replyId: number, action?: 'like' | 'unlike' | 'toggle') => Promise<{ id: number; likes: number; is_liked: boolean }>;
+	followUser: (followingId: number) => Promise<void>;
+	unfollowUser: (followingId: number) => Promise<void>;
+	checkFollowStatus: (userId: number) => Promise<boolean>;
+	fetchNotifications: () => Promise<Notification[]>;
+	getUnreadNotificationCount: () => Promise<number>;
+	markNotificationRead: (notificationId: number) => Promise<void>;
 }
 
 const ForumContext = createContext<ForumContextType | undefined>(undefined);
@@ -361,6 +390,123 @@ export function ForumProvider({ children }: { children: ReactNode }) {
 		}
 	}, [getAuthHeaders]);
 
+	// 关注用户
+	const followUser = useCallback(async (followingId: number) => {
+		try {
+			await axios.post(
+				`${API_BASE_URL}/forum/follow/`,
+				{ following_id: followingId },
+				{
+					headers: {
+						'Content-Type': 'application/json',
+						...getAuthHeaders(),
+					},
+				}
+			);
+		} catch (err: any) {
+			console.error('关注失败:', err);
+			if (err.response?.status === 401) {
+				throw new Error('请先登录');
+			}
+			throw err;
+		}
+	}, [getAuthHeaders]);
+
+	// 取消关注用户
+	const unfollowUser = useCallback(async (followingId: number) => {
+		try {
+			await axios.delete(
+				`${API_BASE_URL}/forum/follow/`,
+				{
+					data: { following_id: followingId },
+					headers: {
+						'Content-Type': 'application/json',
+						...getAuthHeaders(),
+					},
+				}
+			);
+		} catch (err: any) {
+			console.error('取消关注失败:', err);
+			if (err.response?.status === 401) {
+				throw new Error('请先登录');
+			}
+			throw err;
+		}
+	}, [getAuthHeaders]);
+
+	// 检查关注状态
+	const checkFollowStatus = useCallback(async (userId: number) => {
+		try {
+			const response = await axios.get<{ is_following: boolean }>(
+				`${API_BASE_URL}/forum/follow/check/${userId}/`,
+				{
+					headers: {
+						...getAuthHeaders(),
+					},
+				}
+			);
+			return response.data.is_following;
+		} catch (err: any) {
+			console.error('检查关注状态失败:', err);
+			return false;
+		}
+	}, [getAuthHeaders]);
+
+	// 获取通知列表
+	const fetchNotifications = useCallback(async () => {
+		try {
+			const response = await axios.get<Notification[]>(
+				`${API_BASE_URL}/forum/notifications/`,
+				{
+					headers: {
+						...getAuthHeaders(),
+					},
+				}
+			);
+			return response.data;
+		} catch (err: any) {
+			console.error('获取通知失败:', err);
+			throw err;
+		}
+	}, [getAuthHeaders]);
+
+	// 获取未读通知数量
+	const getUnreadNotificationCount = useCallback(async () => {
+		try {
+			const response = await axios.get<{ count: number }>(
+				`${API_BASE_URL}/forum/notifications/count/`,
+				{
+					headers: {
+						...getAuthHeaders(),
+					},
+				}
+			);
+			return response.data.count;
+		} catch (err: any) {
+			console.error('获取未读通知数量失败:', err);
+			return 0;
+		}
+	}, [getAuthHeaders]);
+
+	// 标记通知为已读
+	const markNotificationRead = useCallback(async (notificationId: number) => {
+		try {
+			await axios.post(
+				`${API_BASE_URL}/forum/notifications/${notificationId}/read/`,
+				{},
+				{
+					headers: {
+						'Content-Type': 'application/json',
+						...getAuthHeaders(),
+					},
+				}
+			);
+		} catch (err: any) {
+			console.error('标记通知已读失败:', err);
+			throw err;
+		}
+	}, [getAuthHeaders]);
+
 	const value: ForumContextType = {
 		sections,
 		sectionsLoading,
@@ -376,6 +522,12 @@ export function ForumProvider({ children }: { children: ReactNode }) {
 		createReply,
 		togglePostLike,
 		toggleReplyLike,
+		followUser,
+		unfollowUser,
+		checkFollowStatus,
+		fetchNotifications,
+		getUnreadNotificationCount,
+		markNotificationRead,
 	};
 
 	return (

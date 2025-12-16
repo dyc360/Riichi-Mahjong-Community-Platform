@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import ForumSection, ForumPost, ForumReply, ReplyLike
+from .models import ForumSection, ForumPost, ForumReply, ReplyLike, UserFollow, Notification
 
 
 class ForumSectionSerializer(serializers.ModelSerializer):
@@ -53,7 +53,7 @@ class ForumReplySerializer(serializers.ModelSerializer):
         
         user = None
         
-        # 首先尝试从JWT token获取用户（最可靠的方式）
+        # 尝试从JWT token获取用户
         auth_header = request.META.get("HTTP_AUTHORIZATION", "")
         if auth_header.startswith("Bearer "):
             try:
@@ -68,12 +68,12 @@ class ForumReplySerializer(serializers.ModelSerializer):
                 logger.debug(f"从token获取用户失败: {str(e)}")
                 pass
         
-        # 如果从token获取失败，尝试从request.user获取（由JWT middleware设置）
+        # 如果从token获取失败，尝试从request.user获取
         if not user and hasattr(request, "user"):
             request_user = request.user
-            # 检查是否是已认证的用户（不是AnonymousUser）
+            # 检查是否是已认证的用户
             if hasattr(request_user, "is_authenticated") and request_user.is_authenticated:
-                # 检查是否有id属性（确认是真实用户对象）
+                # 检查是否有id属性
                 if hasattr(request_user, "id") and request_user.id:
                     user = request_user
         
@@ -92,6 +92,7 @@ class ForumReplySerializer(serializers.ModelSerializer):
 
 class ForumPostListSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source="author.username", read_only=True)
+    author_id = serializers.IntegerField(source="author.id", read_only=True)
     section_name = serializers.CharField(source="section.name", read_only=True)
 
     class Meta:
@@ -100,6 +101,7 @@ class ForumPostListSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "author_name",
+            "author_id",
             "section_name",
             "views",
             "replies_count",
@@ -112,6 +114,7 @@ class ForumPostListSerializer(serializers.ModelSerializer):
 
 class ForumPostDetailSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source="author.username", read_only=True)
+    author_id = serializers.IntegerField(source="author.id", read_only=True)
     section_name = serializers.CharField(source="section.name", read_only=True)
     replies = serializers.SerializerMethodField()  # 只返回顶级回复（parent为None）
     is_liked = serializers.SerializerMethodField()
@@ -123,6 +126,7 @@ class ForumPostDetailSerializer(serializers.ModelSerializer):
             "title",
             "content",
             "author_name",
+            "author_id",
             "section_name",
             "tags",
             "views",
@@ -204,3 +208,31 @@ class ForumPostCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return super().create(validated_data)
+
+
+class UserFollowSerializer(serializers.ModelSerializer):
+    follower_name = serializers.CharField(source="follower.username", read_only=True)
+    following_name = serializers.CharField(source="following.username", read_only=True)
+    following_id = serializers.IntegerField(write_only=True, required=False)
+
+    class Meta:
+        model = UserFollow
+        fields = ["id", "follower", "follower_name", "following", "following_id", "following_name", "created_at"]
+        read_only_fields = ["id", "follower", "following", "created_at"]
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    related_post_title = serializers.CharField(source="related_post.title", read_only=True)
+    related_reply_id = serializers.SerializerMethodField()
+
+    def get_related_reply_id(self, obj):
+        """获取相关回复ID，如果不存在则返回None"""
+        return obj.related_reply.id if obj.related_reply else None
+
+    class Meta:
+        model = Notification
+        fields = [
+            "id", "notification_type", "title", "content",
+            "related_post", "related_post_title", "related_reply", "related_reply_id", "is_read", "created_at"
+        ]
+        read_only_fields = ["id", "created_at"]

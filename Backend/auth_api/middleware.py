@@ -33,21 +33,30 @@ class JWTAuthentication:
             auth_header = request.META.get('HTTP_AUTHORIZATION', '')
 
             if not auth_header.startswith('Bearer '):
-                return JsonResponse({
-                    'success': False,
-                    'message': '未提供认证token'
-                }, status=401)
+                return JsonResponse(
+                    {
+                        'success': False,
+                        'message': '未提供认证token'
+                    },
+                    status=401,
+                )
 
             token = auth_header.split(' ')[1]
 
             try:
                 user = JWTManager.get_user_from_token(token)
+                # 同时设置 Django 原始 request 和 DRF Request 可见的用户，用于 DRF 的认证链
                 request.user = user
+                setattr(request, '_force_auth_user', user)
+                setattr(request, '_force_auth_token', token)
             except Exception as e:
-                return JsonResponse({
-                    'success': False,
-                    'message': str(e)
-                }, status=401)
+                return JsonResponse(
+                    {
+                        'success': False,
+                        'message': str(e)
+                    },
+                    status=401,
+                )
 
         response = self.get_response(request)
         return response

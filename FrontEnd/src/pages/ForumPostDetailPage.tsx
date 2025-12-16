@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { HomePageHeader, ModuleContainer } from '../components/homePageComp';
 import { useAuth } from '../contexts/AuthContext';
 import { useForum, type ForumPostDetail, type ForumReply } from '../contexts/ForumContext';
@@ -63,7 +63,7 @@ const ReplyItem = ({ reply, user, onLike, onReply, replyingTo, nestedReplyConten
 	const editorMode = (nestedReplyEditorMode && nestedReplyEditorMode[reply.id]) || 'edit';
 
 	return (
-		<div className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+		<div id={`reply-${reply.id}`} className="p-4 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 scroll-mt-20">
 			<div className="flex items-start gap-3">
 				<img src={getAvatarUrl(reply.author_name)} alt={reply.author_name} className="w-8 h-8 rounded-full flex-shrink-0" />
 				<div className="flex-1">
@@ -251,8 +251,9 @@ const ReplyItem = ({ reply, user, onLike, onReply, replyingTo, nestedReplyConten
 export default function ForumPostDetailPage() {
 	const { user, isLoading: authLoading } = useAuth();
 	const { title } = useParams<{ title: string }>();
+	const location = useLocation();
 	const navigate = useNavigate();
-	const { fetchPostDetailByTitle, createReply, togglePostLike, toggleReplyLike, fetchPosts } = useForum();
+	const { fetchPostDetailByTitle, createReply, togglePostLike, toggleReplyLike, fetchPosts, followUser, unfollowUser, checkFollowStatus } = useForum();
 
 	const [post, setPost] = useState<ForumPostDetail | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -260,9 +261,11 @@ export default function ForumPostDetailPage() {
 	const [replyContent, setReplyContent] = useState("");
 	const [isLiked, setIsLiked] = useState(false);
 	const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+	const [isFollowingAuthor, setIsFollowingAuthor] = useState(false); // 是否关注作者
 	const [replyingTo, setReplyingTo] = useState<number | null>(null); // 回复ID
 	const [nestedReplyContent, setNestedReplyContent] = useState<{ [key: number]: string }>({}); // 嵌套回复内容
 	const hasLoadedRef = useRef<string | null>(null); // 记录已加载的标题，防止重复请求
+	const scrollToReplyIdRef = useRef<number | null>(null); // 保存需要滚动到的回复ID
 	const [replyEditorMode, setReplyEditorMode] = useState<'edit' | 'preview'>('edit'); // 回复编辑器模式
 	const [nestedReplyEditorMode, setNestedReplyEditorMode] = useState<{ [key: number]: 'edit' | 'preview' }>({}); // 嵌套回复编辑器模式
 	const replyTextareaRef = useRef<HTMLTextAreaElement>(null); // 回复输入框引用
@@ -297,6 +300,12 @@ export default function ForumPostDetailPage() {
 				const postData = await fetchPostDetailByTitle(decodedTitle);
 				setPost(postData);
 				setIsLiked(postData.is_liked ?? false);
+				
+				// 检查关注状态
+				if (user && postData.author_id && user.username !== postData.author_name) {
+					const isFollowing = await checkFollowStatus(postData.author_id);
+					setIsFollowingAuthor(isFollowing);
+				}
 			} catch (err: any) {
 				console.error("加载帖子失败:", err);
 				setError(err?.message || "加载帖子失败，请稍后重试");
@@ -307,6 +316,83 @@ export default function ForumPostDetailPage() {
 
 		loadPost();
 	}, [title, fetchPostDetailByTitle, authLoading]);
+
+	// 检查 location.state 中的 replyId 并保存到 ref
+	useEffect(() => {
+		const replyId = (location.state as any)?.replyId;
+		if (replyId && typeof replyId === 'number') {
+			console.log('检测到需要滚动到的回复ID:', replyId);
+			scrollToReplyIdRef.current = replyId;
+			// 立即清除 state，避免重复触发
+			navigate(location.pathname, { replace: true, state: {} });
+		}
+	}, [location, navigate]);
+
+	// 处理滚动到指定回复
+	useEffect(() => {
+		if (!post || loading) return;
+		
+		const replyId = scrollToReplyIdRef.current;
+		if (!replyId) return;
+
+		console.log('开始滚动到回复:', replyId, '当前回复数量:', post.replies.length);
+		console.log('所有回复ID:', post.replies.map(r => r.id));
+
+		// 使用递归函数等待元素出现
+		const scrollToReply = (attempts = 0) => {
+			const elementId = `reply-${replyId}`;
+			const element = document.getElementById(elementId);
+			
+			console.log(`尝试 ${attempts + 1}: 查找元素 ${elementId}`, element ? '找到' : '未找到');
+			
+			if (element) {
+				console.log('找到回复元素，开始滚动', element);
+				// 元素已找到，执行滚动
+				// 等待一小段时间确保页面布局稳定
+				setTimeout(() => {
+					// 计算元素位置
+					const rect = element.getBoundingClientRect();
+					const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+					const targetY = rect.top + scrollTop - 100; // 减去100px留出顶部空间
+					
+					console.log('滚动参数:', { rect, scrollTop, targetY });
+					
+					// 平滑滚动
+					window.scrollTo({
+						top: targetY,
+						behavior: 'smooth'
+					});
+					
+					// 高亮显示回复
+					element.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2', 'transition-all', 'duration-300');
+					setTimeout(() => {
+						element.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
+					}, 2000);
+					
+					// 清除 ref 中的 replyId
+					scrollToReplyIdRef.current = null;
+				}, 300);
+			} else if (attempts < 50) {
+				// 元素未找到，继续尝试（最多50次，约5秒）
+				if (attempts % 10 === 0) {
+					console.log(`等待回复元素出现... (尝试 ${attempts + 1}/50)`);
+					// 列出所有现有的回复元素ID
+					const allReplyElements = document.querySelectorAll('[id^="reply-"]');
+					console.log('当前页面中的回复元素:', Array.from(allReplyElements).map(el => el.id));
+				}
+				setTimeout(() => scrollToReply(attempts + 1), 100);
+			} else {
+				// 超时，清除 ref
+				console.warn(`无法找到回复元素: reply-${replyId}，已尝试50次`);
+				const allReplyElements = document.querySelectorAll('[id^="reply-"]');
+				console.warn('页面中存在的回复元素:', Array.from(allReplyElements).map(el => el.id));
+				scrollToReplyIdRef.current = null;
+			}
+		};
+
+		// 开始尝试滚动
+		scrollToReply();
+	}, [post, loading, navigate]);
 
 	// 处理点赞
 	const handleLike = async () => {
@@ -700,9 +786,52 @@ export default function ForumPostDetailPage() {
 								<img src={getAvatarUrl(post.author_name)} alt={post.author_name} className="w-20 h-20 rounded-full mb-3" />
 								<h3 className="font-bold text-slate-900 dark:text-white">{post.author_name}</h3>
 								<p className="text-sm text-slate-500 dark:text-slate-400 mb-3">麻将爱好者</p>
-								<button className="w-full py-2 rounded-lg border border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors text-sm font-medium">
-									关注作者
-								</button>
+								{user && user.username !== post.author_name && post.author_id && (
+									<>
+										<button 
+											onClick={async () => {
+												if (!post.author_id) return;
+												
+												try {
+													if (isFollowingAuthor) {
+														await unfollowUser(post.author_id);
+														setIsFollowingAuthor(false);
+														alert(`已取消关注 ${post.author_name}`);
+													} else {
+														await followUser(post.author_id);
+														setIsFollowingAuthor(true);
+														alert(`已关注 ${post.author_name}，您将收到该作者新帖的通知`);
+													}
+												} catch (error: any) {
+													alert(error?.message || '操作失败，请稍后重试');
+												}
+											}}
+											className={`w-full py-2 rounded-lg border transition-colors text-sm font-medium ${
+												isFollowingAuthor
+													? 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:text-white dark:border-indigo-600 dark:hover:bg-indigo-700'
+													: 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+											}`}
+										>
+											{isFollowingAuthor ? '✓ 已关注' : '关注作者'}
+										</button>
+										{isFollowingAuthor && (
+											<p className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
+												将收到该作者新帖通知
+											</p>
+										)}
+									</>
+								)}
+								{!user && (
+									<button 
+										onClick={() => {
+											alert('请先登录后再关注作者');
+											navigate('/login?redirect=' + encodeURIComponent(window.location.pathname));
+										}}
+										className="w-full py-2 rounded-lg border border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors text-sm font-medium"
+									>
+											关注作者
+									</button>
+								)}
 							</div>
 						</ModuleContainer>
 					</div>

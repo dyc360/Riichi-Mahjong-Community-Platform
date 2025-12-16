@@ -2,28 +2,48 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { HomePageHeader, ModuleContainer } from '../components/homePageComp';
 import { useTheme } from '../contexts/ThemeContext';
-import { HOT_POSTS, LATEST_POSTS } from './ForumPage';
-import type { ForumPost } from './ForumSectionPage';
+import { useForum, type ForumPost } from '../contexts/ForumContext';
+
+// 格式化相对时间
+const formatRelativeTime = (dateString: string): string => {
+	const date = new Date(dateString);
+	const now = new Date();
+	const diffInMs = now.getTime() - date.getTime();
+	const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+	const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+	const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+	if (diffInMinutes < 1) {
+		return '刚刚';
+	} else if (diffInMinutes < 60) {
+		return `${diffInMinutes}分钟前`;
+	} else if (diffInHours < 24) {
+		return `${diffInHours}小时前`;
+	} else if (diffInDays < 7) {
+		return `${diffInDays}天前`;
+	} else {
+		return date.toLocaleDateString('zh-CN', {
+			year: 'numeric',
+			month: 'numeric',
+			day: 'numeric'
+		});
+	}
+};
+
+// 生成头像URL
+const getAvatarUrl = (username: string): string => {
+	return `https://placehold.co/32x32/6366f1/ffffff?text=${username.charAt(0)}`;
+};
 
 // 帖子项组件
-const PostItem = ({
-    post,
-    isHot,
-    activeTopic
-}: {
-    post: ForumPost & { lastReply?: { author: string; time: string } },
-    isHot: boolean,
-    activeTopic: string
-}) => {
+const PostItem = ({ post, activeTopic }: { post: ForumPost; activeTopic: string }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow">
             <div className="flex gap-4">
-                {/* 作者头像 */}
                 <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                    <img src={post.avatar} alt={post.author} className="w-full h-full object-cover" />
+					<img src={getAvatarUrl(post.author_name)} alt={post.author_name} className="w-full h-full object-cover" />
                 </div>
 
-                {/* 帖子内容 */}
                 <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap gap-2 mb-1">
                         {post.tags.map((tag, index) => (
@@ -38,7 +58,7 @@ const PostItem = ({
                                 {tag}
                             </Link>
                         ))}
-                        {isHot && (
+						{post.is_hot && (
                             <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
                                 热门
                             </span>
@@ -51,21 +71,14 @@ const PostItem = ({
 
                     <div className="flex items-center justify-between">
                         <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
-                            <span>{post.author}</span>
+							<span>{post.author_name}</span>
                             <span className="mx-2">·</span>
-                            <span>{post.time}</span>
+							<span>{formatRelativeTime(post.created_at)}</span>
                         </div>
 
                         <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
                             <span>👁️ {post.views}</span>
-                            <span>💬 {post.replies}</span>
-
-                            {isHot && post.lastReply && (
-                                <div className="text-right">
-                                    <div className="text-xs">最后回复</div>
-                                    <div className="text-xs">{post.lastReply.author}</div>
-                                </div>
-                            )}
+							<span>💬 {post.replies_count}</span>
                         </div>
                     </div>
                 </div>
@@ -76,52 +89,29 @@ const PostItem = ({
 
 export default function ForumTopicPage() {
     const { theme } = useTheme();
-    const { topic } = useParams<{ topic: string }>(); // 从URL获取标签名称
+	const { topic } = useParams<{ topic: string }>();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const [posts, setPosts] = useState<(ForumPost & {
-        lastReply?: { author: string; time: string },
-        isHot?: boolean
-    })[]>([]);
+	const { fetchPosts } = useForum();
+	const [posts, setPosts] = useState<ForumPost[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // 获取排序方式和当前页码
     const sortType = searchParams.get('sort') || 'latest';
     const currentPage = parseInt(searchParams.get('page') || '1', 10) || 1;
-
     const postsPerPage = 10;
 
     useEffect(() => {
         const fetchTopicPosts = async () => {
-            try {
+			if (!topic) return;
 
-                // 合并热门帖子和最新帖子，并标记来源
-                const allPosts = [
-                    ...HOT_POSTS.map(post => ({ ...post, isHot: true })),
-                    ...LATEST_POSTS.map(post => ({ ...post, isHot: false }))
-                ];
-
-                // 筛选出包含当前标签的帖子
-                const topicPosts = allPosts.filter(post =>
-                    topic && post.tags.some(t => t.toLowerCase() === topic.toLowerCase())
-                );
-
-                // 根据排序类型排序
-                let sortedPosts = [...topicPosts];
-                if (sortType === 'hot') {
-                    // 热门排序：按浏览量降序
-                    sortedPosts.sort((a, b) => (b.views || 0) - (a.views || 0));
-                } else {
-                    // 最新排序：按时间降序
-                    sortedPosts.sort((a, b) => {
-                        // 简单的时间排序逻辑，可能需要更复杂的日期比较
-                        if (a.time.includes('分钟前') && b.time.includes('小时前')) return -1;
-                        if (a.time.includes('小时前') && b.time.includes('天前')) return -1;
-                        return b.time.localeCompare(a.time);
-                    });
-                }
-
-                setPosts(sortedPosts);
+			try {
+				setLoading(true);
+				const postsData = await fetchPosts({
+					topic: topic,
+					sort: sortType as 'latest' | 'hot',
+					page: currentPage,
+				});
+				setPosts(postsData);
             } catch (error) {
                 console.error('获取标签帖子失败:', error);
             } finally {
@@ -130,22 +120,18 @@ export default function ForumTopicPage() {
         };
 
         fetchTopicPosts();
-    }, [topic, sortType]);
+	}, [topic, sortType, currentPage, fetchPosts]);
 
-    // 处理排序变更
     const handleSortChange = (newSortType: string) => {
         navigate(`?sort=${newSortType}&page=1`, { replace: true });
     };
 
-    // 处理页码变更
     const handlePageChange = (page: number) => {
         if (page < 1 || page > Math.ceil(posts.length / postsPerPage)) return;
-
         navigate(`?sort=${sortType}&page=${page}`, { replace: true });
         window.scrollTo(0, 0);
     };
 
-    // 计算分页
     const totalPages = Math.ceil(posts.length / postsPerPage);
     const indexOfLastPost = currentPage * postsPerPage;
     const indexOfFirstPost = indexOfLastPost - postsPerPage;
@@ -155,7 +141,6 @@ export default function ForumTopicPage() {
         navigate(-1);
     };
 
-    //加载状态
     if (loading) {
         return (
             <>
@@ -172,7 +157,6 @@ export default function ForumTopicPage() {
         );
     }
 
-    // 处理标签不存在的情况
     if (!topic) {
         return (
             <>
@@ -263,7 +247,6 @@ export default function ForumTopicPage() {
                                     <PostItem
                                         key={post.id}
                                         post={post}
-                                        isHot={post.isHot || false}
                                         activeTopic={topic}
                                     />
                                 ))}

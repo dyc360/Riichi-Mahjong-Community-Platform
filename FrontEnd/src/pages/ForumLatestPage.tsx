@@ -2,20 +2,48 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomePageHeader, ModuleContainer } from '../components/homePageComp';
 import { useTheme } from '../contexts/ThemeContext';
-import { LATEST_POSTS } from './ForumPage';
-import type { ForumPost } from './ForumSectionPage';
+import { useForum, type ForumPost } from '../contexts/ForumContext';
+
+// 格式化相对时间
+const formatRelativeTime = (dateString: string): string => {
+	const date = new Date(dateString);
+	const now = new Date();
+	const diffInMs = now.getTime() - date.getTime();
+	const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+	const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+	const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+	if (diffInMinutes < 1) {
+		return '刚刚';
+	} else if (diffInMinutes < 60) {
+		return `${diffInMinutes}分钟前`;
+	} else if (diffInHours < 24) {
+		return `${diffInHours}小时前`;
+	} else if (diffInDays < 7) {
+		return `${diffInDays}天前`;
+	} else {
+		return date.toLocaleDateString('zh-CN', {
+			year: 'numeric',
+			month: 'numeric',
+			day: 'numeric'
+		});
+	}
+};
+
+// 生成头像URL
+const getAvatarUrl = (username: string): string => {
+	return `https://placehold.co/32x32/6366f1/ffffff?text=${username.charAt(0)}`;
+};
 
 // 帖子项组件
-const LatestPostItem = ({ post, isHot }: { post: ForumPost, isHot: boolean }) => {
+const LatestPostItem = ({ post }: { post: ForumPost }) => {
 	return (
 		<div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow">
 			<div className="flex gap-4">
-				{/* 作者头像 */}
 				<div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-					<img src={post.avatar} alt={post.author} className="w-full h-full object-cover" />
+					<img src={getAvatarUrl(post.author_name)} alt={post.author_name} className="w-full h-full object-cover" />
 				</div>
 
-				{/* 帖子内容 */}
 				<div className="flex-1 min-w-0">
 					<div className="flex flex-wrap gap-2 mb-1">
 						{post.tags.map((tag, index) => (
@@ -27,7 +55,7 @@ const LatestPostItem = ({ post, isHot }: { post: ForumPost, isHot: boolean }) =>
 								{tag}
 							</Link>
 						))}
-						{isHot && (
+						{post.is_hot && (
 							<span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
 								热门
 							</span>
@@ -40,14 +68,14 @@ const LatestPostItem = ({ post, isHot }: { post: ForumPost, isHot: boolean }) =>
 
 					<div className="flex items-center justify-between">
 						<div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
-							<span>{post.author}</span>
+							<span>{post.author_name}</span>
 							<span className="mx-2">·</span>
-							<span>{post.time}</span>
+							<span>{formatRelativeTime(post.created_at)}</span>
 						</div>
 
 						<div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
 							<span>👁️ {post.views}</span>
-							<span>💬 {post.replies}</span>
+							<span>💬 {post.replies_count}</span>
 						</div>
 					</div>
 				</div>
@@ -60,23 +88,19 @@ export default function ForumLatestPage() {
 	const { theme } = useTheme();
 	const navigate = useNavigate();
 	const [searchParams] = useSearchParams();
-	const [posts, setPosts] = useState<(ForumPost & { lastReply?: { author: string; time: string } })[]>([]);
+	const { fetchLatestPosts } = useForum();
+	const [posts, setPosts] = useState<ForumPost[]>([]);
 	const [loading, setLoading] = useState(true);
-	const currentPage = parseInt(searchParams.get('page') || '1', 10) || 1;
 
+	const currentPage = parseInt(searchParams.get('page') || '1', 10) || 1;
 	const postsPerPage = 10;
 
 	useEffect(() => {
-		const fetchLatestPosts = async () => {
+		const fetchLatestPostsData = async () => {
 			try {
-				await new Promise(resolve => setTimeout(resolve, 600));
-				const sortedPosts = [...LATEST_POSTS].sort((a, b) => {
-					// 简单的时间排序逻辑，可能需要更复杂的日期比较
-					if (a.time.includes('分钟前') && b.time.includes('小时前')) return -1;
-					if (a.time.includes('小时前') && b.time.includes('天前')) return -1;
-					return b.time.localeCompare(a.time);
-				});
-				setPosts(sortedPosts);
+				setLoading(true);
+				const postsData = await fetchLatestPosts(currentPage);
+				setPosts(postsData);
 			} catch (error) {
 				console.error('获取最新帖子失败:', error);
 			} finally {
@@ -84,18 +108,15 @@ export default function ForumLatestPage() {
 			}
 		};
 
-		fetchLatestPosts();
-	}, []);
-
+		fetchLatestPostsData();
+	}, [currentPage, fetchLatestPosts]);
 
 	const handlePageChange = (page: number) => {
 		if (page < 1 || page > Math.ceil(posts.length / postsPerPage)) return;
-
 		navigate(`?page=${page}`, { replace: true });
 		window.scrollTo(0, 0);
 	};
 
-	// 计算分页
 	const totalPages = Math.ceil(posts.length / postsPerPage);
 	const indexOfLastPost = currentPage * postsPerPage;
 	const indexOfFirstPost = indexOfLastPost - postsPerPage;
@@ -105,7 +126,6 @@ export default function ForumLatestPage() {
 		navigate(-1);
 	};
 
-	// 加载状态
 	if (loading) {
 		return (
 			<>
@@ -157,7 +177,7 @@ export default function ForumLatestPage() {
 						<>
 							<div className="space-y-4">
 								{currentPosts.map(post => (
-									<LatestPostItem key={post.id} post={post} isHot={post.isHot || false} />
+									<LatestPostItem key={post.id} post={post} />
 								))}
 							</div>
 

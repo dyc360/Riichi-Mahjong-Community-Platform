@@ -1,6 +1,8 @@
-import { type ChangeEvent } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ThemeToggle } from './widgets/ThemeToggle'
+import { useAuth } from '../contexts/AuthContext'
+import { useForum } from '../contexts/ForumContext'
 
 // 新闻子模块组件
 export const NewsSubModule = ({
@@ -42,17 +44,48 @@ export const ModuleContainer = ({
 };
 
 export function HomePageHeader() {
+  const { user } = useAuth();
+  const { getUnreadNotificationCount } = useForum();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const loadUnreadCount = async () => {
+    try {
+      const count = await getUnreadNotificationCount();
+      setUnreadCount(count);
+    } catch (error) {
+      console.error('获取未读通知数量失败:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      loadUnreadCount();
+      // 每30秒刷新一次未读数量
+      const interval = setInterval(loadUnreadCount, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setUnreadCount(0);
+    }
+  }, [user, getUnreadNotificationCount]);
+
   return (
     <header className="py-6 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-md transition-colors duration-300">
         <div className="container mx-auto px-4 flex justify-between items-center">
             <Link to="/home" className="text-2xl font-bold">MajHub</Link>
             <nav>
-                <ul className="flex space-x-4">
+                <ul className="flex space-x-4 items-center">
                     <li>
                         <Link to="/profile" className="hover:underline">个人中心</Link>
                     </li>
                     <li>
-                        <Link to="/settings" className="hover:underline">设置</Link>
+                        <Link to="/notifications" className="hover:underline relative">
+                            通知
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                </span>
+                            )}
+                        </Link>
                     </li>
                     {/* 主题切换按钮 */}
                     <li>
@@ -76,7 +109,7 @@ export type ProNewsProps = {
 };
 
 
-export function ProNews({ id, title, timestamp, category }: ProNewsProps) {
+export function ProNews({ id, title, timestamp }: ProNewsProps) {
   // 截断标题，最多显示9个字
   const truncateTitle = (text: string, maxLength: number = 9): string => {
     if (text.length <= maxLength) return text;

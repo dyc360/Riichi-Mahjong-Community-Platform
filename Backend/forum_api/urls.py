@@ -17,4 +17,11 @@ urlpatterns = [
     path("posts/<int:post_id>/like/", views.toggle_post_like, name="forum-post-like"),
     # 回复点赞
     path("replies/<int:reply_id>/like/", views.toggle_reply_like, name="forum-reply-like"),
+    # 用户关注
+    path("follow/", views.UserFollowView.as_view(), name="user-follow"),
+    path("follow/check/<int:user_id>/", views.check_follow_status, name="check-follow-status"),
+    # 通知
+    path("notifications/", views.NotificationListView.as_view(), name="notification-list"),
+    path("notifications/count/", views.get_unread_notification_count, name="notification-count"),
+    path("notifications/<int:notification_id>/read/", views.mark_notification_read, name="mark-notification-read"),
 ]
