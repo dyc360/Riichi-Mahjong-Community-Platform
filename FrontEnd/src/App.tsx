@@ -23,6 +23,7 @@ import EfficiencyCalculationPage from "./pages/EfficiencyCalculationPage.tsx"
 import NewsDetailPage from "./pages/NewsDetailPage.tsx"
 import ForumPostDetailPage from "./pages/ForumPostDetailPage.tsx"
 import CreatePostPage from "./pages/CreatePostPage.tsx"
+import EditPostPage from "./pages/EditPostPage.tsx"
 import ForumSectionPage from "./pages/ForumSectionPage.tsx"
 import ForumHotPage from "./pages/ForumHotPage.tsx"
 import ForumLatestPage from "./pages/ForumLatestPage.tsx"
@@ -51,6 +52,7 @@ function App() {
 				<Route path="/forum" element={<ForumPage />} />
 				<Route path="/forum/post/:title" element={<ForumPostDetailPage />} />
 				<Route path="/forum/create-post" element={<CreatePostPage />} />
+				<Route path="/forum/edit-post/:title" element={<EditPostPage />} />
 				<Route path="/forum/section/:sectionname" element={<ForumSectionPage />} />
 				<Route path="/forum/hot" element={<ForumHotPage />} />
 				<Route path="/forum/latest" element={<ForumLatestPage />} />
