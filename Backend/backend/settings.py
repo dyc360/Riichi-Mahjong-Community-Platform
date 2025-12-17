@@ -73,9 +73,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'mahjong_db',
         'USER': 'majhub_developer',
-        'PASSWORD': 'mahjong123',
-        'HOST': '183.173.105.236',  # 数据库主机
-        'PORT': '3306',         # 数据库端口
+        'PASSWORD': 'Mahjong_123',
+        'HOST': '120.53.120.90',  # 数据库主机
+        'PORT': '8003',         # 数据库端口
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'charset': 'utf8mb4',
@@ -132,3 +132,4 @@ JWT_EXPIRATION_DELTA = datetime.timedelta(days=7)  # 使用 datetime.timedelta
 
 # Mahjim Service Configuration
 MAHJIM_SERVICE_URL = 'http://localhost:8081'
+
