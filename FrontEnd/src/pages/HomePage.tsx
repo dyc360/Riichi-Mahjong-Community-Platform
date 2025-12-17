@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { HomePageHeader } from '../components/homePageComp'
 import { NewsSubModule, ModuleContainer, ProNews, TeamRank, GameInfoCard, ForumTopicRank, PracticeCard, MainNavigation } from '../components/homePageComp'
 import { useNews } from '../contexts/NewsContext';
 import { useMLeague } from '../contexts/MLeagueContext';
+import { useForum, type ForumPost } from '../contexts/ForumContext';
 
 export default function HomePage() {
 	const { getLatestNews, loading, error } = useNews();
@@ -135,26 +137,120 @@ const NewsModule = ({ industryNews, mleagueRankings, mleagueLoading }: NewsModul
 	</ModuleContainer>
 );
 
+// 格式化相对时间
+const formatRelativeTime = (dateString: string): string => {
+	const date = new Date(dateString);
+	const now = new Date();
+	const diffInMs = now.getTime() - date.getTime();
+	const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+	const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+	const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+	if (diffInMinutes < 1) {
+		return '刚刚';
+	} else if (diffInMinutes < 60) {
+		return `${diffInMinutes}分钟前`;
+	} else if (diffInHours < 24) {
+		return `${diffInHours}小时前`;
+	} else if (diffInDays < 7) {
+		return `${diffInDays}天前`;
+	} else {
+		return date.toLocaleDateString('zh-CN', {
+			year: 'numeric',
+			month: 'numeric',
+			day: 'numeric'
+		});
+	}
+};
+
 // 论坛交流模块
-const ForumModule = () => (
-	<ModuleContainer
-		title="论坛交流"
-		description="与其他麻将爱好者分享心得与技巧"
-	>
-		<div className="space-y-1">
-			<ForumTopicRank rank={1} title="【讨论】大家觉得这次新角色如何？" replies={128} time="10分钟前" />
-			<ForumTopicRank rank={2} title="求助：这个牌型应该怎么防守？" replies={85} time="35分钟前" />
-			<ForumTopicRank rank={3} title="分享一个刚刚打出的役满！" replies={64} time="1小时前" />
-			<ForumTopicRank rank={4} title="关于立直麻将的一些基础理论探讨" replies={42} time="2小时前" />
-			<ForumTopicRank rank={5} title="萌新入坑，请问有什么推荐的教学视频吗？" replies={36} time="3小时前" />
-		</div>
-		<div className="mt-3 text-right">
-			<Link to="/forum" className="text-sm font-medium text-indigo-500 hover:text-indigo-300 dark:text-indigo-400">
-				进入论坛 →
-			</Link>
-		</div>
-	</ModuleContainer>
-);
+const ForumModule = () => {
+	const { fetchHotPosts, fetchLatestPosts } = useForum();
+	const [posts, setPosts] = useState<ForumPost[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		const loadPosts = async () => {
+			try {
+				setLoading(true);
+				setError(null);
+				
+				// 获取热门帖子
+				const hotPosts = await fetchHotPosts();
+				
+				// 获取最新帖子
+				const latestPosts = await fetchLatestPosts();
+				
+				// 合并帖子：优先热门帖子，如果不够5条，再从非热门帖子中补充
+				const combinedPosts: ForumPost[] = [];
+				const hotPostIds = new Set(hotPosts.map(p => p.id));
+				
+				// 先添加热门帖子（最多5条）
+				const hotPostsToAdd = hotPosts.slice(0, 5);
+				combinedPosts.push(...hotPostsToAdd);
+				
+				// 如果热门帖子不够5条，从最新帖子中补充（排除已添加的热门帖子）
+				if (combinedPosts.length < 5) {
+					const remainingCount = 5 - combinedPosts.length;
+					const nonHotPosts = latestPosts
+						.filter(p => !hotPostIds.has(p.id))
+						.slice(0, remainingCount);
+					combinedPosts.push(...nonHotPosts);
+				}
+				
+				// 只取前5条
+				setPosts(combinedPosts.slice(0, 5));
+			} catch (err: any) {
+				console.error('获取论坛帖子失败:', err);
+				setError('加载帖子失败，请稍后重试');
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		loadPosts();
+	}, [fetchHotPosts, fetchLatestPosts]);
+
+	return (
+		<ModuleContainer
+			title="论坛交流"
+			description="与其他麻将爱好者分享心得与技巧"
+		>
+			{loading ? (
+				<div className="flex justify-center items-center h-32">
+					<div className="text-slate-600 dark:text-slate-400 text-sm">加载中...</div>
+				</div>
+			) : error ? (
+				<div className="flex justify-center items-center h-32">
+					<div className="text-red-500 dark:text-red-400 text-sm">{error}</div>
+				</div>
+			) : posts.length === 0 ? (
+				<div className="flex justify-center items-center h-32">
+					<div className="text-slate-600 dark:text-slate-400 text-sm">暂无帖子</div>
+				</div>
+			) : (
+				<div className="space-y-1">
+					{posts.map((post, index) => (
+						<ForumTopicRank
+							key={post.id}
+							rank={index + 1}
+							title={post.title}
+							replies={post.replies_count}
+							time={formatRelativeTime(post.created_at)}
+							link={`/forum/post/${encodeURIComponent(post.title)}`}
+						/>
+					))}
+				</div>
+			)}
+			<div className="mt-3 text-right">
+				<Link to="/forum" className="text-sm font-medium text-indigo-500 hover:text-indigo-300 dark:text-indigo-400">
+					进入论坛 →
+				</Link>
+			</div>
+		</ModuleContainer>
+	);
+};
 
 //何切练习模块
 const PracticeModule = () => (
