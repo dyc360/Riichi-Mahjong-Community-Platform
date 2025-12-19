@@ -141,15 +141,44 @@ export default function MLeagueSchedulePage() {
 		return weekMap[dayWeek] || dayWeek;
 	};
 
-	// 按日期分组比赛
+	// 按日期分组比赛（并去重）
 	const groupedSchedule = useMemo(() => {
 		const grouped: { [key: string]: MatchSchedule[] } = {};
-		schedule.forEach(match => {
-			if (!grouped[match.date]) {
-				grouped[match.date] = [];
-			}
-			grouped[match.date].push(match);
-		});
+		const seenMatches = new Set<string>(); // 用于去重
+		
+		schedule
+			.filter(match => {
+				// 过滤掉无效的比赛数据（没有日期、没有队伍信息或队伍名称为空）
+				return match.date && 
+				       match.teams && 
+				       match.teams.length > 0 && 
+				       match.teams.some((t: { name: string }) => t.name && t.name.trim() !== '');
+			})
+			.forEach(match => {
+				// 生成唯一标识符用于去重
+				// 优先使用match_id，如果为空或无效，则使用日期+队伍名称
+				const teamNames = match.teams
+					.map((t: { name: string }) => t.name)
+					.filter((name: string) => name && name.trim() !== '')
+					.sort()
+					.join('-');
+				
+				const matchKey = match.match_id && match.match_id.trim() !== '' 
+					? `${match.date}-${match.match_id}`
+					: `${match.date}-${teamNames}`;
+				
+				// 如果已经见过这个比赛，跳过
+				if (seenMatches.has(matchKey)) {
+					return;
+				}
+				
+				seenMatches.add(matchKey);
+				
+				if (!grouped[match.date]) {
+					grouped[match.date] = [];
+				}
+				grouped[match.date].push(match);
+			});
 
 		// 转换为数组并按日期排序
 		return Object.entries(grouped)
@@ -329,17 +358,24 @@ export default function MLeagueSchedulePage() {
 										</h3>
 									</div>
 									<div className="divide-y divide-gray-200 dark:divide-slate-700">
-										{day.matches.map((match, matchIdx) => {
-											// 生成唯一的key：优先使用match_id，如果为空则使用日期+队伍名称+索引
-											const uniqueKey = match.match_id && match.match_id.trim() !== '' 
-												? match.match_id 
-												: `${match.date}-${match.teams.map((t: { name: string }) => t.name).join('-')}-${matchIdx}`;
-											
-											return (
-											<div
-												key={uniqueKey}
-												className="p-4 hover:bg-gray-50 dark:hover:bg-slate-800/60"
-											>
+										{day.matches
+											.filter(match => {
+												// 过滤掉无效的比赛数据（没有队伍信息或队伍名称为空）
+												return match.teams && 
+												       match.teams.length > 0 && 
+												       match.teams.some((t: { name: string }) => t.name && t.name.trim() !== '');
+											})
+											.map((match, matchIdx) => {
+												// 生成唯一的key：优先使用match_id，如果为空则使用日期+队伍名称+索引
+												const uniqueKey = match.match_id && match.match_id.trim() !== '' 
+													? match.match_id 
+													: `${match.date}-${match.teams.map((t: { name: string }) => t.name).join('-')}-${matchIdx}`;
+												
+												return (
+												<div
+													key={uniqueKey}
+													className="p-4 hover:bg-gray-50 dark:hover:bg-slate-800/60"
+												>
 												<div className="flex flex-wrap items-center justify-between">
 													<div className="flex items-center">
 														<span className={`text-xs font-medium py-1 px-2 rounded-full mr-4 ${
@@ -351,26 +387,28 @@ export default function MLeagueSchedulePage() {
 														</span>
 													</div>
 													<div className="flex items-center justify-center flex-1 mx-4 flex-wrap gap-2">
-														{match.teams.map((team: { name: string; logo?: string }, idx: number) => (
-															<div key={`${uniqueKey}-team-${idx}-${team.name}`} className="flex items-center">
-																{team.logo && (
-																	<img
-																		src={team.logo}
-																		alt={team.name}
-																		className="w-6 h-6 mr-2 object-contain"
-																		onError={(e) => {
-																			(e.target as HTMLImageElement).style.display = 'none';
-																		}}
-																	/>
-																)}
-																<span className="text-sm font-medium text-slate-900 dark:text-white">
-																	{team.name}
-																</span>
-																{idx < match.teams.length - 1 && (
-																	<span className="mx-2 text-slate-400">VS</span>
-																)}
-															</div>
-														))}
+														{match.teams
+															.filter((team: { name: string }) => team.name && team.name.trim() !== '')
+															.map((team: { name: string; logo?: string }, idx: number) => (
+																<div key={`${uniqueKey}-team-${idx}-${team.name}`} className="flex items-center">
+																	{team.logo && (
+																		<img
+																			src={team.logo}
+																			alt={team.name}
+																			className="w-6 h-6 mr-2 object-contain"
+																			onError={(e) => {
+																				(e.target as HTMLImageElement).style.display = 'none';
+																			}}
+																		/>
+																	)}
+																	<span className="text-sm font-medium text-slate-900 dark:text-white">
+																		{team.name}
+																	</span>
+																	{idx < match.teams.filter((t: { name: string }) => t.name && t.name.trim() !== '').length - 1 && (
+																		<span className="mx-2 text-slate-400">VS</span>
+																	)}
+																</div>
+															))}
 													</div>
 													<div className="w-full sm:w-auto mt-2 sm:mt-0 text-right">
 														<Link
