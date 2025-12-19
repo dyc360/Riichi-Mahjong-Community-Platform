@@ -80,19 +80,35 @@ def update_schedule_from_scraper(year: int = None, month: int = None):
             if not date_str:
                 continue
             
+            # 过滤掉teams为空的比赛
+            teams = data.get('teams', [])
+            if not teams or len(teams) == 0:
+                logger.debug(f"跳过teams为空的比赛: {date_str}")
+                continue
+            
+            # 过滤掉所有队伍名称都为空的情况
+            valid_teams = [t for t in teams if t.get('name', '').strip()]
+            if not valid_teams:
+                logger.debug(f"跳过多队名称为空的比赛: {date_str}")
+                continue
+            
             try:
                 match_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
                 logger.warning(f"无效的日期格式: {date_str}")
                 continue
             
-            # 使用match_id作为唯一标识，如果没有则使用日期+队伍名
-            match_id = data.get('match_id')
-            if not match_id:
-                # 生成一个基于日期和队伍的ID
-                team_names = [t.get('name', '') for t in data.get('teams', [])]
-                match_id = f"{date_str}-{'-'.join(team_names[:2])}"
+            # 统一使用 {date}-{teamA}-{teamB}-{teamC}-{teamD} 格式的match_id
+            # scraper已经生成统一格式的match_id，这里直接使用
+            match_id = data.get('match_id', '').strip()
             
+            # 如果match_id为空或格式不对，重新生成（兼容旧数据）
+            if not match_id:
+                team_names = sorted([t.get('name', '').strip() for t in valid_teams])
+                match_id = f"{date_str}-{'-'.join(team_names)}"
+                logger.debug(f"重新生成match_id: {match_id}")
+            
+            # 使用统一的match_id进行更新或创建
             match, created = Match.objects.update_or_create(
                 match_id=match_id,
                 defaults={
@@ -102,7 +118,7 @@ def update_schedule_from_scraper(year: int = None, month: int = None):
                     'year': data.get('year'),
                     'day_week': data.get('day_week', ''),
                     'status': data.get('status', 'upcoming'),
-                    'teams': data.get('teams', []),
+                    'teams': valid_teams,
                     'result': data.get('result'),
                 }
             )

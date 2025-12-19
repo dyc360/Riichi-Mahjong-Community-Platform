@@ -559,26 +559,42 @@ class MLeagueOfficialScraper(MLeagueScraper):
                                 'logo': team_logo if team_logo.startswith('http') else f"{self.base_url}{team_logo}"
                             })
                 
+                # 过滤掉teams为空的比赛项
+                if not teams or len(teams) == 0:
+                    logger.debug(f"跳过空比赛项: {date_str}")
+                    continue
+                
+                # 过滤掉所有队伍名称都为空的情况
+                valid_teams = [t for t in teams if t.get('name', '').strip()]
+                if not valid_teams:
+                    logger.debug(f"跳过多队名称为空的比赛项: {date_str}")
+                    continue
+                
                 # 判断比赛状态
                 is_finished = 'is-finish' in item.get('class', [])
                 status = 'finished' if is_finished else 'upcoming'
                 
-                # 获取比赛ID（如果有）
-                match_id = item.get('data-target', '')
+                # 获取网页提供的原始比赛ID（用于解析比赛结果，但不作为match_id使用）
+                original_match_id = item.get('data-target', '')
                 
-                # 解析比赛结果（如果已完成）
+                # 统一生成match_id格式：{date}-{teamA}-{teamB}-{teamC}-{teamD}
+                # 使用排序后的队伍名称确保稳定性
+                team_names = sorted([t.get('name', '').strip() for t in valid_teams])
+                match_id = f"{date_str}-{'-'.join(team_names)}"
+                
+                # 解析比赛结果（如果已完成，使用原始match_id来解析）
                 match_result = None
-                if is_finished and match_id:
-                    match_result = self._parse_match_result(soup, match_id, teams)
+                if is_finished and original_match_id:
+                    match_result = self._parse_match_result(soup, original_match_id, valid_teams)
                 
                 schedule.append({
-                    'match_id': match_id,
+                    'match_id': match_id,  # 使用统一的格式
                     'date': date_str,
                     'day': day,
                     'month': month,
                     'year': year,
                     'day_week': day_week,
-                    'teams': teams,
+                    'teams': valid_teams,
                     'status': status,
                     'result': match_result,
                     'last_updated': datetime.now().isoformat()
@@ -588,7 +604,43 @@ class MLeagueOfficialScraper(MLeagueScraper):
                 logger.warning(f"解析比赛项失败: {str(e)}")
                 continue
         
-        return schedule
+        # 去重：对于同一日期和队伍的比赛，只保留一个（优先保留已完成的）
+        seen_matches = {}
+        deduplicated_schedule = []
+        
+        for match in schedule:
+            # 生成唯一键：日期 + 队伍名称排序后的字符串
+            teams_names = sorted([t.get('name', '') for t in match.get('teams', [])])
+            match_key = f"{match.get('date')}-{'-'.join(teams_names)}"
+            
+            if match_key not in seen_matches:
+                # 如果还没见过这个比赛，直接添加
+                seen_matches[match_key] = match
+                deduplicated_schedule.append(match)
+            else:
+                # 如果已经见过，优先保留已完成的比赛
+                existing_match = seen_matches[match_key]
+                existing_status = existing_match.get('status', 'upcoming')
+                current_status = match.get('status', 'upcoming')
+                
+                if current_status == 'finished' and existing_status == 'upcoming':
+                    # 当前比赛已完成，已有的是即将开始，替换
+                    index = deduplicated_schedule.index(existing_match)
+                    deduplicated_schedule[index] = match
+                    seen_matches[match_key] = match
+                    logger.debug(f"去重：用已完成的比赛替换即将开始的比赛: {match_key}")
+                elif current_status == 'finished' and existing_status == 'finished':
+                    # 两个都是已完成，优先保留有match_id的或更详细的
+                    existing_match_id = existing_match.get('match_id', '')
+                    current_match_id = match.get('match_id', '')
+                    if current_match_id and not existing_match_id:
+                        index = deduplicated_schedule.index(existing_match)
+                        deduplicated_schedule[index] = match
+                        seen_matches[match_key] = match
+                        logger.debug(f"去重：用有match_id的已完成比赛替换: {match_key}")
+        
+        logger.info(f"解析到 {len(schedule)} 场比赛，去重后剩余 {len(deduplicated_schedule)} 场")
+        return deduplicated_schedule
 
     def _parse_historical_schedule(self, soup: BeautifulSoup, year: int) -> List[Dict]:
         """解析历史赛季比赛日程HTML"""
@@ -705,25 +757,41 @@ class MLeagueOfficialScraper(MLeagueScraper):
                                     'logo': team_logo
                                 })
 
+                    # 过滤掉teams为空的比赛项
+                    if not teams or len(teams) == 0:
+                        logger.debug(f"跳过空比赛项: {date_str}")
+                        continue
+                    
+                    # 过滤掉所有队伍名称都为空的情况
+                    valid_teams = [t for t in teams if t.get('name', '').strip()]
+                    if not valid_teams:
+                        logger.debug(f"跳过多队名称为空的比赛项: {date_str}")
+                        continue
+
                     # 对于历史赛季，所有比赛都应该已完成
                     status = 'finished'
 
-                    # 获取比赛ID
-                    match_id = item.get('data-target', '')
+                    # 获取网页提供的原始比赛ID（用于解析比赛结果，但不作为match_id使用）
+                    original_match_id = item.get('data-target', '')
 
-                    # 尝试解析比赛结果（从模态框中获取详细数据）
+                    # 统一生成match_id格式：{date}-{teamA}-{teamB}-{teamC}-{teamD}
+                    # 使用排序后的队伍名称确保稳定性
+                    team_names = sorted([t.get('name', '').strip() for t in valid_teams])
+                    match_id = f"{date_str}-{'-'.join(team_names)}"
+
+                    # 尝试解析比赛结果（从模态框中获取详细数据，使用原始match_id）
                     match_result = None
-                    if match_id:
-                        match_result = self._parse_match_result(soup, match_id, teams)
+                    if original_match_id:
+                        match_result = self._parse_match_result(soup, original_match_id, valid_teams)
 
                     schedule.append({
-                        'match_id': match_id,
+                        'match_id': match_id,  # 使用统一的格式
                         'date': date_str,
                         'day': day,
                         'month': month,
                         'year': actual_year,
                         'day_week': day_week,
-                        'teams': teams,
+                        'teams': valid_teams,
                         'status': status,
                         'result': match_result,
                         'last_updated': datetime.now().isoformat()
@@ -737,9 +805,43 @@ class MLeagueOfficialScraper(MLeagueScraper):
         if month_stats:
             logger.info(f"月份统计: {month_stats}")
         
-        # 按月份分组统计
-        month_groups = {}
+        # 去重：对于同一日期和队伍的比赛，只保留一个（优先保留有match_id和详细结果的）
+        seen_matches = {}
+        deduplicated_schedule = []
+        
         for match in schedule:
+            # 生成唯一键：日期 + 队伍名称排序后的字符串
+            teams_names = sorted([t.get('name', '') for t in match.get('teams', [])])
+            match_key = f"{match.get('date')}-{'-'.join(teams_names)}"
+            
+            if match_key not in seen_matches:
+                # 如果还没见过这个比赛，直接添加
+                seen_matches[match_key] = match
+                deduplicated_schedule.append(match)
+            else:
+                # 如果已经见过，优先保留有match_id或更详细的比赛
+                existing_match = seen_matches[match_key]
+                existing_match_id = existing_match.get('match_id', '')
+                existing_result = existing_match.get('result')
+                current_match_id = match.get('match_id', '')
+                current_result = match.get('result')
+                
+                # 优先保留有match_id的
+                if current_match_id and not existing_match_id:
+                    index = deduplicated_schedule.index(existing_match)
+                    deduplicated_schedule[index] = match
+                    seen_matches[match_key] = match
+                    logger.debug(f"去重：用有match_id的比赛替换: {match_key}")
+                # 如果都有match_id，优先保留有详细结果的
+                elif current_match_id and existing_match_id and current_result and not existing_result:
+                    index = deduplicated_schedule.index(existing_match)
+                    deduplicated_schedule[index] = match
+                    seen_matches[match_key] = match
+                    logger.debug(f"去重：用有详细结果的比赛替换: {match_key}")
+        
+        # 按月份分组统计（去重后）
+        month_groups = {}
+        for match in deduplicated_schedule:
             match_month = match.get('month')
             if match_month:
                 if match_month not in month_groups:
@@ -747,9 +849,10 @@ class MLeagueOfficialScraper(MLeagueScraper):
                 month_groups[match_month] += 1
         
         if month_groups:
-            logger.info(f"按月份分组统计: {month_groups}")
+            logger.info(f"按月份分组统计（去重后）: {month_groups}")
         
-        return schedule
+        logger.info(f"历史赛季比赛去重：解析到 {len(schedule)} 场，去重后剩余 {len(deduplicated_schedule)} 场")
+        return deduplicated_schedule
 
     def _parse_match_result(self, soup: BeautifulSoup, match_id: str, teams: List[Dict]) -> Optional[Dict]:
         """
