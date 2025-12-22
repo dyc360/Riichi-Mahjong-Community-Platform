@@ -74,12 +74,17 @@ DATABASES = {
         'NAME': 'mahjong_db',
         'USER': 'majhub_developer',
         'PASSWORD': 'Mahjong_123',
-        'HOST': '120.53.120.90',  # 数据库主机
-        'PORT': '8003',         # 数据库端口
+        'HOST': 'db',  # 数据库主机
+        'PORT': '3306',         # 数据库端口
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'charset': 'utf8mb4',
+            'connect_timeout': 60,
+            'read_timeout': 60,
+            'write_timeout': 60,
         },
+        'CONN_MAX_AGE': 60,
+        'ATOMIC_REQUESTS': False,
     }
 }
 
@@ -131,5 +136,15 @@ JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_DELTA = datetime.timedelta(days=7)  # 使用 datetime.timedelta
 
 # Mahjim Service Configuration
-MAHJIM_SERVICE_URL = 'http://localhost:8081'
+MAHJIM_SERVICE_URL = 'http://mahjim:8080'
+
+# Celery配置
+# 支持从环境变量读取，Docker环境中使用redis服务名，本地开发使用localhost
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Shanghai'
+CELERY_ENABLE_UTC = True
 

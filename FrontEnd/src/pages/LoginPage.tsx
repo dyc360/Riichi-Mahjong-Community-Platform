@@ -3,6 +3,8 @@ import { type ChangeEvent, type FormEvent, useState } from 'react'
 import {PasswordField, BrandHeader, HeroSection, BackgroundGlow, Prompt, PolicyFooter, SocialLogin} from '../components/loginComp'
 import { useAuth } from '../contexts/AuthContext';
 
+const API_BASE_URL = '/api';
+
 // Shared shape for the login form data fields.
 type FormState = {
   email: string
@@ -44,7 +46,7 @@ const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
   try {
     console.log('开始登录请求...');
 
-    const response = await fetch('http://localhost:8000/api/auth/login/', {
+    const response = await fetch(`${API_BASE_URL}/auth/login/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

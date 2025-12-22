@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import { type ChangeEvent, type FormEvent, useMemo, useState } from 'react'
 import {PasswordField, HeroSection, BrandHeader, BackgroundGlow, Prompt, PolicyFooter} from '../components/loginComp'
 
+const API_BASE_URL = '/api';
+
 // Shared shape for the sign-up form data fields.
 type FormState = {
 	email: string
@@ -62,7 +64,7 @@ function useSignUpForm(): UseSignUpFormResult {
     try {
       console.log('开始注册请求...', form);
 
-      const response = await fetch('http://localhost:8000/api/auth/register/', {
+      const response = await fetch(`${API_BASE_URL}/auth/register/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

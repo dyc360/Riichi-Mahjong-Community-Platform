@@ -66,6 +66,56 @@ class MLeagueScraper:
                     raise
         
         return None
+    
+    def _fetch_with_selenium(self, url: str) -> BeautifulSoup:
+        """
+        使用Selenium加载页面（用于需要JavaScript渲染的页面）
+        """
+        try:
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+            
+            chrome_options = Options()
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--window-size=1920,1080")
+            chrome_options.add_argument(
+                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
+            
+            driver = webdriver.Chrome(options=chrome_options)
+            logger.info(f"使用Selenium访问: {url}")
+            
+            driver.get(url)
+            
+            # 等待页面加载完成（等待至少一个比赛列表出现）
+            try:
+                WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located((By.CLASS_NAME, "p-gamesSchedule2__lists"))
+                )
+            except:
+                logger.warning("等待比赛列表超时，继续解析...")
+            
+            # 额外等待一段时间确保所有内容加载完成
+            time.sleep(3)
+            
+            # 获取页面源码
+            page_source = driver.page_source
+            driver.quit()
+            
+            return BeautifulSoup(page_source, 'html.parser')
+            
+        except ImportError:
+            logger.warning("Selenium未安装，无法使用Selenium加载页面")
+            raise Exception("Selenium未安装，请安装: pip install selenium")
+        except Exception as e:
+            logger.error(f"使用Selenium加载页面失败: {str(e)}")
+            raise
 
 
 class MLeagueOfficialScraper(MLeagueScraper):
@@ -262,9 +312,12 @@ class MLeagueOfficialScraper(MLeagueScraper):
             players_data = self._parse_stats_table(table)
             
             if players_data:
+                # 检测当前赛季
+                detected_season = self._detect_season(soup)
                 teams_data.append({
                     'team_id': team_id,
                     'team_name': team_name,
+                    'season': detected_season,
                     'players': players_data,
                     'last_updated': datetime.now().isoformat()
                 })
@@ -377,30 +430,56 @@ class MLeagueOfficialScraper(MLeagueScraper):
         从官网games页面抓取比赛日程数据
         - 当前赛季：GET https://m-league.jp/games/?mly={year}&mlm={month}#schedule
         - 历史赛季：GET https://m-league.jp/games/{year}-season
+        
+        Args:
+            year: 年份，如果为None则使用当前年份
+            month: 月份，如果为None且year是历史年份，则抓取整个赛季的数据
         """
         try:
-            # 如果没有指定年份和月份，使用当前日期
             from datetime import datetime
-            if year is None or month is None:
-                now = datetime.now()
-                year = year or now.year
-                month = month or now.month
-
-            # 判断是否为历史赛季（2024年及以前为历史赛季，2025年为当前赛季）
-            current_year = datetime.now().year
+            now = datetime.now()
+            current_year = now.year
+            
+            # 如果没有指定年份，使用当前年份
+            if year is None:
+                year = current_year
+            
+            # 判断是否为历史赛季（当前年份之前为历史赛季）
             is_historical_season = year < current_year
 
             if is_historical_season:
-                # 历史赛季使用不同的URL格式
+                # 历史赛季使用不同的URL格式，不需要月份参数
                 url = f"{self.base_url}/games/{year}-season"
                 logger.info(f"访问M-League历史赛季页面: {url}")
+                
+                # 历史赛季页面可能需要Selenium来加载动态内容
+                # 先尝试使用requests，如果失败再尝试Selenium
+                try:
+                    response = self._make_request(url)
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    
+                    # 检查是否成功加载了内容
+                    test_elements = soup.find_all('ul', class_='p-gamesSchedule2__lists')
+                    if not test_elements:
+                        logger.warning("使用requests未找到比赛列表，尝试使用Selenium...")
+                        raise Exception("未找到比赛列表，可能需要JavaScript渲染")
+                except Exception as e:
+                    logger.info(f"尝试使用Selenium加载历史赛季页面: {str(e)}")
+                    try:
+                        soup = self._fetch_with_selenium(url)
+                    except Exception as selenium_error:
+                        logger.error(f"Selenium加载也失败: {str(selenium_error)}")
+                        # 如果Selenium也失败，返回空列表
+                        return []
             else:
-                # 当前赛季使用原有的URL格式
+                # 当前赛季需要月份参数
+                if month is None:
+                    month = now.month
                 url = f"{self.base_url}/games/?mly={year}&mlm={month}#schedule"
-                logger.info(f"访问M-League当前赛季页面: {url}")
+                logger.info(f"访问M-League当前赛季页面: {url} (year={year}, month={month})")
 
-            response = self._make_request(url)
-            soup = BeautifulSoup(response.content, 'html.parser')
+                response = self._make_request(url)
+                soup = BeautifulSoup(response.content, 'html.parser')
 
             if is_historical_season:
                 schedule = self._parse_historical_schedule(soup, year)
@@ -408,9 +487,9 @@ class MLeagueOfficialScraper(MLeagueScraper):
                 schedule = self._parse_schedule(soup, year, month)
 
             if schedule:
-                logger.info(f"成功解析到 {len(schedule)} 场比赛")
+                logger.info(f"成功解析到 {len(schedule)} 场比赛 (year={year}, month={month if not is_historical_season else 'all'})")
             else:
-                logger.warning("未能解析到比赛日程数据")
+                logger.warning(f"未能解析到比赛日程数据 (year={year}, month={month if not is_historical_season else 'all'})")
 
             return schedule
 
@@ -515,20 +594,56 @@ class MLeagueOfficialScraper(MLeagueScraper):
         """解析历史赛季比赛日程HTML"""
         schedule = []
 
-        # 查找比赛日程容器（历史赛季使用p-gamesSchedule2）
+        # 尝试多种方式查找比赛日程容器
+        # 方法1: 查找div.p-gamesSchedule2
         schedule_div = soup.find('div', class_='p-gamesSchedule2')
+        
+        # 方法2: 如果没找到，尝试查找section.p-gamesSchedule2
         if not schedule_div:
-            logger.warning("未找到历史赛季比赛日程div (p-gamesSchedule2)")
-            return schedule
+            schedule_div = soup.find('section', class_='p-gamesSchedule2')
+        
+        # 方法3: 如果还没找到，尝试查找所有包含p-gamesSchedule2的元素
+        if not schedule_div:
+            schedule_div = soup.find(class_=lambda x: x and 'p-gamesSchedule2' in str(x))
+        
+        if not schedule_div:
+            logger.warning("未找到历史赛季比赛日程容器 (p-gamesSchedule2)")
+            # 尝试直接查找所有的比赛列表
+            games_lists = soup.find_all('ul', class_='p-gamesSchedule2__lists')
+            if games_lists:
+                logger.info(f"直接找到 {len(games_lists)} 个比赛列表（未找到容器div）")
+            else:
+                logger.warning("未找到任何比赛列表")
+                return schedule
+        else:
+            # 查找所有月份的比赛列表（每个月份都有一个ul.p-gamesSchedule2__lists）
+            games_lists = schedule_div.find_all('ul', class_='p-gamesSchedule2__lists')
+            logger.info(f"找到 {len(games_lists)} 个月份的比赛列表")
 
-        # 查找所有月份的比赛列表（每个月份都有一个ul.p-gamesSchedule2__lists）
-        games_lists = schedule_div.find_all('ul', class_='p-gamesSchedule2__lists')
-        logger.info(f"找到 {len(games_lists)} 个月份的比赛列表")
-
+        # 统计所有月份的比赛数量
+        total_games = 0
+        month_stats = {}
+        
         for month_list in games_lists:
+            # 尝试查找月份标题（可能在父元素或前面的元素中）
+            month_title = None
+            parent = month_list.find_parent()
+            if parent:
+                # 查找月份标题元素
+                month_title_elem = parent.find(['h2', 'h3', 'div'], class_=lambda x: x and ('month' in str(x).lower() or '月' in str(x)))
+                if month_title_elem:
+                    month_title = month_title_elem.get_text(strip=True)
+            
             # 解析每个比赛项
             game_items = month_list.find_all('li', class_='p-gamesSchedule2__list')
-            logger.debug(f"月份列表包含 {len(game_items)} 个比赛项目")
+            month_count = len(game_items)
+            total_games += month_count
+            
+            if month_title:
+                logger.info(f"月份 {month_title}: {month_count} 场比赛")
+                month_stats[month_title] = month_count
+            else:
+                logger.info(f"未命名月份列表: {month_count} 场比赛")
 
             for item in game_items:
                 try:
@@ -618,7 +733,22 @@ class MLeagueOfficialScraper(MLeagueScraper):
                     logger.warning(f"解析历史赛季比赛项失败: {str(e)}")
                     continue
 
-        logger.info(f"成功解析 {len(schedule)} 场历史赛季比赛")
+        logger.info(f"成功解析 {len(schedule)} 场历史赛季比赛 (总计: {total_games} 场比赛项)")
+        if month_stats:
+            logger.info(f"月份统计: {month_stats}")
+        
+        # 按月份分组统计
+        month_groups = {}
+        for match in schedule:
+            match_month = match.get('month')
+            if match_month:
+                if match_month not in month_groups:
+                    month_groups[match_month] = 0
+                month_groups[match_month] += 1
+        
+        if month_groups:
+            logger.info(f"按月份分组统计: {month_groups}")
+        
         return schedule
 
     def _parse_match_result(self, soup: BeautifulSoup, match_id: str, teams: List[Dict]) -> Optional[Dict]:
@@ -773,6 +903,8 @@ def fetch_points_data():
         # 尝试使用Selenium获取数据
         from selenium import webdriver
         from selenium.webdriver.chrome.options import Options
+        #from selenium.webdriver.chrome.service import Service
+        #from webdriver_manager.chrome import ChromeDriverManager
         from selenium.webdriver.common.by import By
         from selenium.webdriver.support.ui import WebDriverWait
         from selenium.webdriver.support import expected_conditions as EC
@@ -788,6 +920,7 @@ def fetch_points_data():
             "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         )
 
+        #driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
         driver = webdriver.Chrome(options=chrome_options)
         url = "https://m-league.jp/points"
         logger.info(f"访问URL: {url}")

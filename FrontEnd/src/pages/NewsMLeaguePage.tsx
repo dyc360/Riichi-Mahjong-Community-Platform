@@ -155,11 +155,18 @@ export default function MLeaguePage() {
 	// 获取最近完成的比赛（只显示当前赛季）
 	const recentMatches = useMemo(() => {
 		const matches = schedule
-			.filter(match => 
-				isCurrentSeasonMatch(match) && 
-				match.status === 'finished' && 
-				match.result
-			)
+			.filter(match => {
+				// 过滤条件：当前赛季 + 已完成 + 有结果 + 有效数据
+				if (!isCurrentSeasonMatch(match)) return false;
+				if (match.status !== 'finished') return false;
+				if (!match.result) return false;
+				
+				// 确保有有效的队伍信息
+				if (!match.teams || match.teams.length === 0) return false;
+				if (!match.teams.some((team: { name: string }) => team.name && team.name.trim() !== '')) return false;
+				
+				return true;
+			})
 			.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 			.slice(0, 5);
 		return matches.map((match, idx) => ({
@@ -173,10 +180,17 @@ export default function MLeaguePage() {
 	// 获取即将到来的比赛（只显示当前赛季）
 	const upcomingMatches = useMemo(() => {
 		const matches = schedule
-			.filter(match => 
-				isCurrentSeasonMatch(match) && 
-				match.status === 'upcoming'
-			)
+			.filter(match => {
+				// 过滤条件：当前赛季 + 即将开始 + 有效数据
+				if (!isCurrentSeasonMatch(match)) return false;
+				if (match.status !== 'upcoming') return false;
+				
+				// 确保有有效的队伍信息
+				if (!match.teams || match.teams.length === 0) return false;
+				if (!match.teams.some((team: { name: string }) => team.name && team.name.trim() !== '')) return false;
+				
+				return true;
+			})
 			.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 			.slice(0, 4);
 		return matches.map((match, idx) => ({
@@ -369,51 +383,60 @@ export default function MLeaguePage() {
 						</div>
 					) : (
 						<div className="space-y-3">
-							{recentMatches.map(match => {
-								// 构建队伍名称字符串用于URL
-								const teamsParam = match.match.teams.map(t => t.name).join('|');
-								const matchPath = `/matches/${match.date}/${encodeURIComponent(teamsParam)}`;
+							{recentMatches
+								.filter(match => {
+									// 再次过滤，确保只渲染有效数据
+									return match.match.teams && 
+									       match.match.teams.length > 0 && 
+									       match.match.teams.some((team: { name: string }) => team.name && team.name.trim() !== '');
+								})
+								.map(match => {
+									// 过滤掉名称为空的队伍
+									const validTeams = match.match.teams.filter((team: { name: string }) => team.name && team.name.trim() !== '');
+									// 构建队伍名称字符串用于URL
+									const teamsParam = validTeams.map((t: { name: string }) => t.name).join('|');
+									const matchPath = `/matches/${match.date}/${encodeURIComponent(teamsParam)}`;
 
-								return (
-									<div key={match.id} className="flex flex-wrap items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-100 dark:border-slate-700">
-										<div className="text-sm text-slate-500 dark:text-slate-400 w-full sm:w-auto mb-2 sm:mb-0">
-											{formatDate(match.date)}
+									return (
+										<div key={match.id} className="flex flex-wrap items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-100 dark:border-slate-700">
+											<div className="text-sm text-slate-500 dark:text-slate-400 w-full sm:w-auto mb-2 sm:mb-0">
+												{formatDate(match.date)}
+											</div>
+											<div className="flex items-center justify-center flex-1 flex-wrap gap-2">
+												{validTeams.map((team: { name: string; logo?: string }, idx: number) => (
+													<div key={`${match.id}-team-${idx}-${team.name}`} className="flex items-center">
+														{team.logo && (
+															<img
+																src={team.logo}
+																alt={team.name}
+																className="w-6 h-6 mr-2 object-contain"
+																onError={(e) => {
+																	(e.target as HTMLImageElement).style.display = 'none';
+																}}
+															/>
+														)}
+														<p className="text-sm font-medium text-slate-900 dark:text-white">
+															{team.name}
+														</p>
+														{idx < validTeams.length - 1 && (
+															<span className="mx-3 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded text-sm font-medium text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
+																VS
+															</span>
+														)}
+													</div>
+												))}
+											</div>
+											<div className="w-full sm:w-auto mt-2 sm:mt-0 text-right">
+												<Link
+													to={matchPath}
+													className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400"
+												>
+													查看详情 →
+												</Link>
+											</div>
 										</div>
-										<div className="flex items-center justify-center flex-1 flex-wrap gap-2">
-											{match.match.teams.map((team, idx) => (
-												<div key={idx} className="flex items-center">
-													{team.logo && (
-														<img
-															src={team.logo}
-															alt={team.name}
-															className="w-6 h-6 mr-2 object-contain"
-															onError={(e) => {
-																(e.target as HTMLImageElement).style.display = 'none';
-															}}
-														/>
-													)}
-													<p className="text-sm font-medium text-slate-900 dark:text-white">
-														{team.name}
-													</p>
-													{idx < match.match.teams.length - 1 && (
-														<span className="mx-3 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded text-sm font-medium text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
-															VS
-														</span>
-													)}
-												</div>
-											))}
-										</div>
-										<div className="w-full sm:w-auto mt-2 sm:mt-0 text-right">
-											<Link
-												to={matchPath}
-												className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400"
-											>
-												查看详情 →
-											</Link>
-										</div>
-									</div>
-								);
-							})}
+									);
+								})}
 						</div>
 					)}
 				</ModuleContainer>
@@ -433,37 +456,49 @@ export default function MLeaguePage() {
 						</div>
 					) : (
 						<div className="space-y-3">
-							{upcomingMatches.map(match => (
-								<div key={match.id} className="flex flex-wrap items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-100 dark:border-slate-700">
-									<div className="text-sm text-slate-500 dark:text-slate-400 w-full sm:w-auto mb-2 sm:mb-0">
-										{formatDate(match.date)}
-									</div>
-									<div className="flex items-center justify-center flex-1">
-										{match.match.teams.map((team, idx) => (
-											<div key={idx} className="flex items-center">
-												{team.logo && (
-													<img
-														src={team.logo}
-														alt={team.name}
-														className="w-6 h-6 mr-2 object-contain"
-														onError={(e) => {
-															(e.target as HTMLImageElement).style.display = 'none';
-														}}
-													/>
-												)}
-												<p className="text-sm font-medium text-slate-900 dark:text-white">
-													{team.name}
-												</p>
-												{idx < match.match.teams.length - 1 && (
-													<span className="mx-3 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded text-sm font-medium text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
-														VS
-													</span>
-												)}
+							{upcomingMatches
+								.filter(match => {
+									// 再次过滤，确保只渲染有效数据
+									return match.match.teams && 
+									       match.match.teams.length > 0 && 
+									       match.match.teams.some((team: { name: string }) => team.name && team.name.trim() !== '');
+								})
+								.map(match => {
+									// 过滤掉名称为空的队伍
+									const validTeams = match.match.teams.filter((team: { name: string }) => team.name && team.name.trim() !== '');
+									
+									return (
+										<div key={match.id} className="flex flex-wrap items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-100 dark:border-slate-700">
+											<div className="text-sm text-slate-500 dark:text-slate-400 w-full sm:w-auto mb-2 sm:mb-0">
+												{formatDate(match.date)}
 											</div>
-										))}
-									</div>
-								</div>
-							))}
+											<div className="flex items-center justify-center flex-1">
+												{validTeams.map((team: { name: string; logo?: string }, idx: number) => (
+													<div key={`${match.id}-team-${idx}-${team.name}`} className="flex items-center">
+														{team.logo && (
+															<img
+																src={team.logo}
+																alt={team.name}
+																className="w-6 h-6 mr-2 object-contain"
+																onError={(e) => {
+																	(e.target as HTMLImageElement).style.display = 'none';
+																}}
+															/>
+														)}
+														<p className="text-sm font-medium text-slate-900 dark:text-white">
+															{team.name}
+														</p>
+														{idx < validTeams.length - 1 && (
+															<span className="mx-3 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded text-sm font-medium text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
+																VS
+															</span>
+														)}
+													</div>
+												))}
+											</div>
+										</div>
+									);
+								})}
 						</div>
 					)}
 				</ModuleContainer>

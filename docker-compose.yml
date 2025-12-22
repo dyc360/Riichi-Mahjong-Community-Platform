@@ -1,0 +1,47 @@
+services:
+  backend:
+    build: ./Backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=backend.settings
+    volumes:
+      - ./Backend:/app
+    depends_on:
+      - db
+      - mahjim
+
+  db:
+    image: mysql:8.0
+    ports:
+      - "8003:3306"
+    environment:
+      MYSQL_DATABASE: mahjong_db
+      MYSQL_USER: majhub_developer
+      MYSQL_PASSWORD: Mahjong_123
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  mahjim:
+    build: ./Backend/mahjong_utils/mahjim
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ./FrontEnd
+    ports:
+      - "3000:80"
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  mysql_data:

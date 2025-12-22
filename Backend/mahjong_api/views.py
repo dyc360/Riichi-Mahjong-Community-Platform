@@ -254,7 +254,8 @@ class MahjongPointView(APIView):
                     has_aka_dora=True
                 )[0]
                 # print(f"win_tile_136: {win_tile_136}, closed_tiles before removal: {closed_tiles}")
-                closed_tiles.remove(win_tile_136)
+                if win_tile_136 in closed_tiles:
+                    closed_tiles.remove(win_tile_136)
                 
                 # 4. Convert closed tiles to string
                 closed_hand_str = TilesConverter.to_one_line_string(closed_tiles, print_aka_dora=True)
@@ -305,7 +306,7 @@ class MahjongPointView(APIView):
                         "kyoutaku_bonus": agari.cost.get("kyoutaku_bonus", 0),
                         "total": agari.cost.get("total", 0),
                         "yaku_level": agari.cost.get("yaku_level", 0),
-                        "yaku_name": [y.chinese_name for y in agari.yaku] if agari.yaku else [],
+                        "yaku_name": [y.name for y in agari.yaku] if agari.yaku else [],
                         "yaku_hanshu": yaku_hanshu,
                         "error": agari.error,
                         "fu": agari.fu,
@@ -351,6 +352,15 @@ class MahjongEfficiencyView(APIView):
             sutehai = data.get('sutehai', '')
             tile_num = data.get('tile_num', '')
             tile_13_in_hand = data.get('tile_13_in_hand', '')
+
+            # Convert sutehai to int if it's a valid value
+            if sutehai != '' and sutehai is not None:
+                try:
+                    sutehai = int(sutehai)
+                except (ValueError, TypeError):
+                    sutehai = None
+            else:
+                sutehai = None
 
             # Convert string tiles to 34-indices if necessary
             if isinstance(tile_13_in_hand, list) and len(tile_13_in_hand) > 0 and isinstance(tile_13_in_hand[0], str):
@@ -420,11 +430,13 @@ class MahjongEfficiencyView(APIView):
                 
                 tile_34_array_copy = tile_34_array[:]
                 tile_34_array_copy[new_ukeire_tile] += 1
-                full_hand_str = TilesConverter.array_34_to_one_line_string(tile_34_array_copy)
+                tile_136_array = TilesConverter.to_136_array(tile_34_array_copy)
+                full_hand_str = TilesConverter.to_one_line_string(tile_136_array)
             else:
                 # Handle case where no tiles left (End of Deck)
                 # We still return the current hand state, but with empty analysis
-                full_hand_str = TilesConverter.array_34_to_one_line_string(tile_34_array)
+                tile_136_array = TilesConverter.to_136_array(tile_34_array)
+                full_hand_str = TilesConverter.to_one_line_string(tile_136_array)
 
             response_data = {
                 "tile_in_hand_str_list": tile_in_hand_str_list,

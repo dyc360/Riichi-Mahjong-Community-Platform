@@ -1,5 +1,5 @@
 """
-API视图：提供数据抓取和手动触发接口
+API视图：提供数据查询接口（从数据库读取）和手动触发抓取接口
 """
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -8,8 +8,18 @@ from rest_framework import permissions
 from rest_framework import generics
 from rest_framework.views import APIView
 from django.conf import settings
+from django.db.models import Q
+from datetime import datetime
 from .scraper import MLeagueOfficialScraper
-from .tasks import update_rankings_from_scraper, update_schedule_from_scraper
+from .tasks import (
+    update_rankings_from_scraper, 
+    update_schedule_from_scraper,
+    update_player_stats_from_scraper,
+    update_points_data_from_scraper,
+    update_all_mleague_data,
+    update_current_season_schedule
+)
+from .models import TeamRanking, Match, TeamPlayerStats, PointsData
 import logging
 
 logger = logging.getLogger(__name__)
@@ -50,20 +60,38 @@ def trigger_scrape_schedule(request):
     """
     手动触发赛程数据抓取
     POST /api/mleague-scraper/trigger/schedule/
+    请求体参数:
+    - year: 年份（可选）
+    - month: 月份（可选）
+    - current_season: bool, 如果为true，则抓取整个当前赛季的数据（忽略year和month）
     """
     try:
-        start_date = request.data.get('start_date')
-        end_date = request.data.get('end_date')
+        current_season = request.data.get('current_season', False)
+        
+        if current_season:
+            # 抓取整个当前赛季的数据
+            success = update_current_season_schedule()
+            return Response({
+                'success': success,
+                'message': '当前赛季赛程数据抓取完成' if success else '当前赛季赛程数据抓取失败'
+            })
+        
+        year = request.data.get('year')
+        month = request.data.get('month')
+        
+        # 转换为整数（如果提供）
+        year = int(year) if year else None
+        month = int(month) if month else None
         
         schedule_data = update_schedule_from_scraper(
-            start_date=start_date,
-            end_date=end_date
+            year=year,
+            month=month
         )
         
         return Response({
             'success': True,
             'data': schedule_data,
-            'count': len(schedule_data)
+            'count': len(schedule_data) if schedule_data else 0
         })
         
     except Exception as e:
@@ -74,28 +102,135 @@ def trigger_scrape_schedule(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['POST'])
+@permission_classes([permissions.IsAdminUser])
+def trigger_scrape_player_stats(request):
+    """
+    手动触发选手统计数据抓取
+    POST /api/mleague-scraper/trigger/player-stats/
+    """
+    try:
+        success = update_player_stats_from_scraper()
+        
+        if success:
+            return Response({
+                'success': True,
+                'message': '成功更新选手统计数据'
+            })
+        else:
+            return Response({
+                'success': False,
+                'message': '更新选手统计数据失败，请查看日志'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Exception as e:
+        logger.error(f"触发选手统计抓取失败: {str(e)}", exc_info=True)
+        return Response({
+            'success': False,
+            'message': f'错误: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAdminUser])
+def trigger_scrape_points(request):
+    """
+    手动触发积分数据抓取
+    POST /api/mleague-scraper/trigger/points/
+    """
+    try:
+        success = update_points_data_from_scraper()
+        
+        if success:
+            return Response({
+                'success': True,
+                'message': '成功更新积分数据'
+            })
+        else:
+            return Response({
+                'success': False,
+                'message': '更新积分数据失败，请查看日志'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Exception as e:
+        logger.error(f"触发积分数据抓取失败: {str(e)}", exc_info=True)
+        return Response({
+            'success': False,
+            'message': f'错误: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAdminUser])
+def trigger_scrape_all(request):
+    """
+    手动触发所有数据抓取
+    POST /api/mleague-scraper/trigger/all/
+    请求体可选参数:
+    - include_historical: bool, 是否包含历史赛季赛程数据（默认true）
+    """
+    try:
+        include_historical = request.data.get('include_historical', True)
+        results = update_all_mleague_data(include_historical_schedule=include_historical)
+        
+        return Response({
+            'success': True,
+            'message': '数据抓取完成',
+            'results': results
+        })
+            
+    except Exception as e:
+        logger.error(f"触发全部数据抓取失败: {str(e)}", exc_info=True)
+        return Response({
+            'success': False,
+            'message': f'错误: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class MLeagueRankingView(generics.GenericAPIView):
     """
-    获取M-League最新排名数据（直接从官网抓取）
-    GET /api/m-league/rankings/
+    获取M-League最新排名数据（从数据库读取）
+    GET /api/m-league/rankings/?season=2025赛季
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
         try:
-            scraper = MLeagueOfficialScraper()
-            rankings = scraper.fetch_rankings()
+            # 获取查询参数
+            season = request.query_params.get('season')
             
-            # 获取最后更新时间（从第一条数据中获取）
+            # 如果没有指定赛季，获取最新的赛季
+            if season:
+                rankings_queryset = TeamRanking.objects.filter(season=season)
+            else:
+                # 获取最新赛季的数据
+                latest_season = TeamRanking.objects.values_list('season', flat=True).distinct().order_by('-season').first()
+                if latest_season:
+                    rankings_queryset = TeamRanking.objects.filter(season=latest_season)
+                else:
+                    rankings_queryset = TeamRanking.objects.none()
+            
+            # 转换为字典列表
+            rankings = []
             last_updated = None
-            if rankings:
-                last_updated = rankings[0].get('last_updated')
+            for ranking in rankings_queryset.order_by('rank'):
+                rankings.append({
+                    'id': ranking.rank,
+                    'rank': ranking.rank,
+                    'team_name': ranking.team_name,
+                    'score': ranking.score,
+                    'season': ranking.season,
+                    'last_updated': ranking.last_updated.isoformat() if ranking.last_updated else None
+                })
+                if not last_updated or (ranking.last_updated and ranking.last_updated > last_updated):
+                    last_updated = ranking.last_updated
             
             return Response({
                 'success': True,
                 'data': rankings,
                 'count': len(rankings),
-                'last_updated': last_updated
+                'last_updated': last_updated.isoformat() if last_updated else None,
+                'season': season or (latest_season if 'latest_season' in locals() else None)
             })
             
         except Exception as e:
@@ -108,26 +243,47 @@ class MLeagueRankingView(generics.GenericAPIView):
 
 class MLeaguePlayerStatsView(generics.GenericAPIView):
     """
-    获取M-League选手统计数据（直接从官网抓取）
-    GET /api/m-league/player-stats/
+    获取M-League选手统计数据（从数据库读取）
+    GET /api/m-league/player-stats/?season=2025赛季
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
         try:
-            scraper = MLeagueOfficialScraper()
-            stats = scraper.fetch_player_stats()
+            # 获取查询参数
+            season = request.query_params.get('season')
             
-            # 获取最后更新时间（从第一条数据中获取）
+            # 如果没有指定赛季，获取最新的赛季
+            if season:
+                stats_queryset = TeamPlayerStats.objects.filter(season=season)
+            else:
+                # 获取最新赛季的数据
+                latest_season = TeamPlayerStats.objects.values_list('season', flat=True).distinct().order_by('-season').first()
+                if latest_season:
+                    stats_queryset = TeamPlayerStats.objects.filter(season=latest_season)
+                else:
+                    stats_queryset = TeamPlayerStats.objects.none()
+            
+            # 转换为字典列表
+            stats = []
             last_updated = None
-            if stats:
-                last_updated = stats[0].get('last_updated')
+            for team_stat in stats_queryset:
+                stats.append({
+                    'team_id': team_stat.team_id,
+                    'team_name': team_stat.team_name,
+                    'season': team_stat.season,
+                    'players': team_stat.players,
+                    'last_updated': team_stat.last_updated.isoformat() if team_stat.last_updated else None
+                })
+                if not last_updated or (team_stat.last_updated and team_stat.last_updated > last_updated):
+                    last_updated = team_stat.last_updated
             
             return Response({
                 'success': True,
                 'data': stats,
                 'count': len(stats),
-                'last_updated': last_updated
+                'last_updated': last_updated.isoformat() if last_updated else None,
+                'season': season or (latest_season if 'latest_season' in locals() else None)
             })
             
         except Exception as e:
@@ -140,8 +296,8 @@ class MLeaguePlayerStatsView(generics.GenericAPIView):
 
 class MLeaguePlayerDetailView(generics.GenericAPIView):
     """
-    获取指定选手的详细统计数据
-    GET /api/m-league/player-stats/{player_name}/
+    获取指定选手的详细统计数据（从数据库读取）
+    GET /api/m-league/player-stats/{player_name}/?season=2025赛季
     """
     permission_classes = [permissions.AllowAny]
 
@@ -151,22 +307,33 @@ class MLeaguePlayerDetailView(generics.GenericAPIView):
             from urllib.parse import unquote
             decoded_name = unquote(player_name)
             
-            scraper = MLeagueOfficialScraper()
-            player_stats = scraper.fetch_player_stats()
+            # 获取查询参数
+            season = request.query_params.get('season')
+            
+            # 查询数据库
+            if season:
+                stats_queryset = TeamPlayerStats.objects.filter(season=season)
+            else:
+                # 获取最新赛季的数据
+                latest_season = TeamPlayerStats.objects.values_list('season', flat=True).distinct().order_by('-season').first()
+                if latest_season:
+                    stats_queryset = TeamPlayerStats.objects.filter(season=latest_season)
+                else:
+                    stats_queryset = TeamPlayerStats.objects.none()
             
             # 在所有队伍中查找该选手
             found_player = None
             team_info = None
             
-            for team_stat in player_stats:
-                for player in team_stat.get('players', []):
+            for team_stat in stats_queryset:
+                for player in team_stat.players:
                     if player.get('player_name') == decoded_name:
                         found_player = player
                         team_info = {
-                            'team_id': team_stat.get('team_id'),
-                            'team_name': team_stat.get('team_name'),
-                            'season': team_stat.get('season'),
-                            'last_updated': team_stat.get('last_updated')
+                            'team_id': team_stat.team_id,
+                            'team_name': team_stat.team_name,
+                            'season': team_stat.season,
+                            'last_updated': team_stat.last_updated.isoformat() if team_stat.last_updated else None
                         }
                         break
                 if found_player:
@@ -196,8 +363,8 @@ class MLeaguePlayerDetailView(generics.GenericAPIView):
 
 class MLeagueScheduleView(generics.GenericAPIView):
     """
-    获取M-League比赛日程数据（直接从官网抓取）
-    GET /api/m-league/schedule/?year=2025&month=12
+    获取M-League比赛日程数据（从数据库读取）
+    GET /api/m-league/schedule/?year=2025&month=12&status=finished
     对于历史赛季（2024年及以前），可以只提供year参数
     如果不提供year和month参数，则使用当前日期
     """
@@ -208,36 +375,72 @@ class MLeagueScheduleView(generics.GenericAPIView):
             # 获取查询参数
             year = request.query_params.get('year')
             month = request.query_params.get('month')
+            status_filter = request.query_params.get('status')  # upcoming, finished
 
             # 转换为整数（如果提供）
             year = int(year) if year else None
             month = int(month) if month else None
 
-            # 对于历史赛季（2024年及以前），如果没有提供月份，则获取整个赛季的数据
-            from datetime import datetime
-            current_year = datetime.now().year
-            is_historical_season = year and year < current_year
+            # 构建查询
+            queryset = Match.objects.all()
 
-            if is_historical_season and month is None:
-                logger.info(f"获取历史赛季 {year} 年的完整数据")
-            elif not is_historical_season and month is None:
-                # 当前赛季需要月份信息
-                now = datetime.now()
-                month = month or now.month
+            # 判断是否为历史赛季查询（只提供了year，没有month，且year小于当前年份）
+            now = datetime.now()
+            current_year = now.year
+            is_season_query = year and not month and year < current_year
 
-            scraper = MLeagueOfficialScraper()
-            schedule = scraper.fetch_schedule(year=year, month=month)
+            if is_season_query:
+                # 历史赛季查询：返回该赛季的所有数据
+                # M-League赛季：9-12月属于开始年份，1-5月属于结束年份（开始年份+1）
+                # 需要查询：
+                # 1. year年的9-12月数据
+                # 2. (year+1)年的1-5月数据
+                season_query = Q(
+                    Q(year=year, month__gte=9, month__lte=12) |  # 开始年份的9-12月
+                    Q(year=year+1, month__gte=1, month__lte=5)    # 结束年份的1-5月
+                )
+                queryset = queryset.filter(season_query)
+                logger.info(f"历史赛季查询: {year}赛季 (包含{year}年9-12月和{year+1}年1-5月)")
+            elif year:
+                # 按年份过滤（当前赛季或指定年份）
+                queryset = queryset.filter(year=year)
+            
+            # 按月份过滤（如果不是赛季查询）
+            if month and not is_season_query:
+                queryset = queryset.filter(month=month)
+            
+            # 按状态过滤
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
 
-            # 获取最后更新时间（从第一条数据中获取）
+            # 如果没有提供参数，使用当前日期
+            if not year and not month:
+                queryset = queryset.filter(year=now.year, month=now.month)
+
+            # 转换为字典列表
+            schedule = []
             last_updated = None
-            if schedule:
-                last_updated = schedule[0].get('last_updated')
+            for match in queryset.order_by('-date', '-created_at'):
+                schedule.append({
+                    'match_id': match.match_id,
+                    'date': match.date.strftime('%Y-%m-%d') if match.date else None,
+                    'day': match.day,
+                    'month': match.month,
+                    'year': match.year,
+                    'day_week': match.day_week,
+                    'teams': match.teams,
+                    'status': match.status,
+                    'result': match.result,
+                    'last_updated': match.last_updated.isoformat() if match.last_updated else None
+                })
+                if not last_updated or (match.last_updated and match.last_updated > last_updated):
+                    last_updated = match.last_updated
 
             return Response({
                 'success': True,
                 'data': schedule,
                 'count': len(schedule),
-                'last_updated': last_updated
+                'last_updated': last_updated.isoformat() if last_updated else None
             })
 
         except ValueError as e:
@@ -334,14 +537,37 @@ def debug_html_structure(request):
 
 
 class MLeaguePointsView(APIView):
-    """获取M-League积分数据"""
+    """
+    获取M-League积分数据（从数据库读取）
+    GET /api/m-league/points/?type=total_points
+    """
     permission_classes = [permissions.AllowAny]  # 允许所有用户访问
 
     def get(self, request):
         try:
-            from .scraper import fetch_points_data
-            points_data = fetch_points_data()
-            return Response(points_data)
+            # 获取查询参数
+            points_type = request.query_params.get('type', 'total_points')
+            
+            # 从数据库读取
+            try:
+                points_data_obj = PointsData.objects.get(points_type=points_type)
+                return Response({
+                    'success': True,
+                    'data': {
+                        points_type: points_data_obj.team_data
+                    },
+                    'last_updated': points_data_obj.last_updated.isoformat() if points_data_obj.last_updated else None
+                })
+            except PointsData.DoesNotExist:
+                # 如果数据库中没有数据，返回空数据
+                return Response({
+                    'success': True,
+                    'data': {
+                        points_type: []
+                    },
+                    'last_updated': None,
+                    'message': '数据库中暂无积分数据，请先触发数据抓取'
+                })
 
         except Exception as e:
             logger.error(f"获取积分数据失败: {str(e)}", exc_info=True)
