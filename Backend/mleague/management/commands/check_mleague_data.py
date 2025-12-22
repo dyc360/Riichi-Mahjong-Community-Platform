@@ -97,14 +97,14 @@ class Command(BaseCommand):
                 Q(year=start_year+1, month__gte=1, month__lte=5)
             )
             if season_matches.count() == 0:
-                issues.append(f'⚠️  {start_year}-{start_year+1}赛季: 没有数据')
+                issues.append(f'[WARN] {start_year}-{start_year+1}赛季: 没有数据')
         
         if issues:
             self.stdout.write(self.style.WARNING('发现以下问题:'))
             for issue in issues:
                 self.stdout.write(self.style.WARNING(f'  {issue}'))
         else:
-            self.stdout.write(self.style.SUCCESS('✓ 所有历史赛季都有数据'))
+            self.stdout.write(self.style.SUCCESS('[OK] 所有历史赛季都有数据'))
         
         # 检查是否有月份数据缺失（对于有数据的赛季）
         self.stdout.write('\n【月份数据完整性检查】')
@@ -131,7 +131,7 @@ class Command(BaseCommand):
                 if missing_months:
                     self.stdout.write(self.style.WARNING(f'  {start_year}-{start_year+1}赛季缺少月份: {", ".join(missing_months)}'))
                 else:
-                    self.stdout.write(self.style.SUCCESS(f'  {start_year}-{start_year+1}赛季: 所有月份都有数据'))
+                    self.stdout.write(self.style.SUCCESS(f'  [OK] {start_year}-{start_year+1}赛季: 所有月份都有数据'))
         
         self.stdout.write('\n' + '=' * 60)
         self.stdout.write(self.style.SUCCESS('检查完成！'))

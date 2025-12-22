@@ -80,39 +80,112 @@ def update_schedule_from_scraper(year: int = None, month: int = None):
             if not date_str:
                 continue
             
+            # 过滤掉teams为空的比赛
+            teams = data.get('teams', [])
+            if not teams or len(teams) == 0:
+                logger.debug(f"跳过teams为空的比赛: {date_str}")
+                continue
+            
+            # 过滤掉所有队伍名称都为空的情况
+            valid_teams = [t for t in teams if t.get('name', '').strip()]
+            if not valid_teams:
+                logger.debug(f"跳过多队名称为空的比赛: {date_str}")
+                continue
+            
             try:
                 match_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
                 logger.warning(f"无效的日期格式: {date_str}")
                 continue
             
-            # 使用match_id作为唯一标识，如果没有则使用日期+队伍名
-            match_id = data.get('match_id')
-            if not match_id:
-                # 生成一个基于日期和队伍的ID
-                team_names = [t.get('name', '') for t in data.get('teams', [])]
-                match_id = f"{date_str}-{'-'.join(team_names[:2])}"
+            # 统一使用 {date}-{teamA}-{teamB}-{teamC}-{teamD} 格式的match_id
+            # 确保队伍名称格式一致：去除前后空格，统一处理
+            team_names = sorted([t.get('name', '').strip() for t in valid_teams])
             
-            match, created = Match.objects.update_or_create(
-                match_id=match_id,
-                defaults={
-                    'date': match_date,
-                    'day': data.get('day'),
-                    'month': data.get('month'),
-                    'year': data.get('year'),
-                    'day_week': data.get('day_week', ''),
-                    'status': data.get('status', 'upcoming'),
-                    'teams': data.get('teams', []),
-                    'result': data.get('result'),
-                }
-            )
+            # 始终生成标准的match_id（即使scraper已经生成，也重新生成以确保格式一致）
+            match_id = f"{date_str}-{'-'.join(team_names)}"
             
-            if created:
-                saved_count += 1
-                logger.debug(f"创建新比赛记录: {match_date} - {match_id}")
-            else:
+            # 使用match_id进行更新或创建
+            # 如果match_id已存在，直接更新；如果不存在，先检查是否有相同date和队伍的旧记录（match_id为None）
+            match = None
+            
+            try:
+                # 首先尝试用match_id查找
+                match = Match.objects.get(match_id=match_id)
+            except Match.DoesNotExist:
+                match = None
+            except Match.MultipleObjectsReturned:
+                # 如果存在多条相同match_id的记录（理论上不应该发生），取第一条并删除其他的
+                matches = Match.objects.filter(match_id=match_id)
+                match = matches.first()
+                logger.warning(f"发现多条相同match_id的记录: {match_id}，保留第一条，删除其他 {matches.count() - 1} 条")
+                for dup_match in matches[1:]:
+                    dup_match.delete()
+            
+            if not match:
+                # 如果match_id不存在，检查是否有相同date和队伍的旧记录（match_id为None）
+                # 这种情况可能发生在数据迁移或旧数据中
+                existing_matches = Match.objects.filter(
+                    date=match_date,
+                    match_id__isnull=True
+                )
+                
+                # 检查是否有队伍匹配的记录
+                for existing_match in existing_matches:
+                    existing_teams = existing_match.teams or []
+                    existing_team_names = sorted([t.get('name', '').strip() for t in existing_teams])
+                    
+                    # 比较队伍名称是否一致
+                    if existing_team_names == team_names:
+                        match = existing_match
+                        logger.debug(f"找到匹配的旧记录（match_id为None），将更新: {match_date}")
+                        break
+                
+                # 如果找到匹配的旧记录，删除其他重复的记录（如果有）
+                if match:
+                    # 查找所有其他匹配的重复记录（除了当前找到的这条）
+                    duplicate_matches = Match.objects.filter(
+                        date=match_date,
+                        match_id__isnull=True
+                    ).exclude(id=match.id)
+                    
+                    # 检查并删除其他重复记录
+                    for dup_match in duplicate_matches:
+                        dup_teams = dup_match.teams or []
+                        dup_team_names = sorted([t.get('name', '').strip() for t in dup_teams])
+                        if dup_team_names == team_names:
+                            logger.warning(f"发现重复记录，删除: ID={dup_match.id}, Date={match_date}")
+                            dup_match.delete()
+            
+            if match:
+                # 更新现有记录
+                match.match_id = match_id  # 确保match_id被设置
+                match.date = match_date
+                match.day = data.get('day')
+                match.month = data.get('month')
+                match.year = data.get('year')
+                match.day_week = data.get('day_week', '')
+                match.status = data.get('status', 'upcoming')
+                match.teams = valid_teams
+                match.result = data.get('result')
+                match.save()
                 updated_count += 1
                 logger.debug(f"更新比赛记录: {match_date} - {match_id}")
+            else:
+                # 创建新记录
+                match = Match.objects.create(
+                    match_id=match_id,
+                    date=match_date,
+                    day=data.get('day'),
+                    month=data.get('month'),
+                    year=data.get('year'),
+                    day_week=data.get('day_week', ''),
+                    status=data.get('status', 'upcoming'),
+                    teams=valid_teams,
+                    result=data.get('result'),
+                )
+                saved_count += 1
+                logger.debug(f"创建新比赛记录: {match_date} - {match_id}")
         
         logger.info(f"成功保存赛程数据: 新建 {saved_count} 条, 更新 {updated_count} 条 (year={year}, month={month})")
         return schedule_data
