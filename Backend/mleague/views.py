@@ -540,15 +540,44 @@ class MLeaguePointsView(APIView):
     """
     获取M-League积分数据（从数据库读取）
     GET /api/m-league/points/?type=total_points
+    如果不传递type参数，则返回所有积分类型的数据
     """
     permission_classes = [permissions.AllowAny]  # 允许所有用户访问
 
     def get(self, request):
         try:
             # 获取查询参数
-            points_type = request.query_params.get('type', 'total_points')
+            points_type = request.query_params.get('type')
             
-            # 从数据库读取
+            # 如果没有指定type，返回所有积分类型的数据
+            if not points_type:
+                # 获取所有积分类型的数据
+                all_points_data = PointsData.objects.all()
+                
+                # 构建返回数据，包含所有积分类型
+                result_data = {
+                    'total_points': [],
+                    'regular_points': [],
+                    'postseason_points': [],
+                    'semifinal_points': [],
+                    'final_points': []
+                }
+                
+                last_updated = None
+                for points_data_obj in all_points_data:
+                    result_data[points_data_obj.points_type] = points_data_obj.team_data
+                    # 获取最新的更新时间
+                    if points_data_obj.last_updated:
+                        if not last_updated or points_data_obj.last_updated > last_updated:
+                            last_updated = points_data_obj.last_updated
+                
+                return Response({
+                    'success': True,
+                    'data': result_data,
+                    'last_updated': last_updated.isoformat() if last_updated else None
+                })
+            
+            # 如果指定了type，只返回该类型的数据（保持向后兼容）
             try:
                 points_data_obj = PointsData.objects.get(points_type=points_type)
                 return Response({
