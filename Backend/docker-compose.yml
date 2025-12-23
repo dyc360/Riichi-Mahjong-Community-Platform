@@ -1,0 +1,75 @@
+services:
+  # Redis服务 - Celery的消息代理和结果后端
+  redis:
+    image: redis:6.2-alpine
+    container_name: mleague-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - mleague-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Celery Worker - 处理异步任务
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    container_name: mleague-celery-worker
+    command: celery -A backend worker --loglevel=info --concurrency=4
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      - DJANGO_SETTINGS_MODULE=backend.settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - mleague-network
+
+  # Celery Beat - 定时任务调度器
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    container_name: mleague-celery-beat
+    command: celery -A backend beat --loglevel=info
+    volumes:
+      - .:/app
+      - celery_beat_data:/app/celerybeat-schedule
+    working_dir: /app
+    environment:
+      - DJANGO_SETTINGS_MODULE=backend.settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      redis:
+        condition: service_healthy
+      celery-worker:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - mleague-network
+
+volumes:
+  redis_data:
+    driver: local
+  celery_beat_data:
+    driver: local
+
+networks:
+  mleague-network:
+    driver: bridge
