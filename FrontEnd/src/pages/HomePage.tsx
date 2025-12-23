@@ -267,20 +267,22 @@ const PracticeModule = () => (
 				link='/practice/point-calculation'
 			/>
 			<PracticeCard
-				title="清一色训练"
-				description="针对多面听的清一色牌型进行专项训练。"
+				title="清一色何切"
+				description="针对清一色的牌效率何切练习。"
 				difficulty="Hard"
 				count={40}
+				link="/practice/chinitsu-calculation"
 			/>
 			<PracticeCard
 				title="何切300"
 				description="来自《何切300问》的精选题目，涵盖多种复杂局面。"
 				difficulty="Medium"
 				count={300}
+				link="/practice/naze300"
 			/>
 			<PracticeCard
 				title="牌效率何切"
-				description="适合新手的牌效练习，学习如何最大化进张。"
+				description="牌效练习，学习如何最大化进张。"
 				difficulty="Easy"
 				link="/practice/efficiency-calculation"
 				count={150}

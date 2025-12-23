@@ -74,7 +74,7 @@ const MahjongTile = ({
 	isHoverable?: boolean;
 }) => {
 	// Using the backend URL pattern we found
-	const imageUrl = `http://localhost:8000/api/mahjong/images/${code}/`;
+	const imageUrl = `${window.location.protocol}//${window.location.hostname}/api/mahjong/images/${code}/`;
 
 	return (
 		<div
@@ -437,7 +437,7 @@ const EfficiencyCalculationPage = () => {
 												</h4>
 												<div className="flex justify-center bg-slate-100 dark:bg-slate-900/50 p-4 rounded-lg overflow-x-auto">
 													<img
-														src={`http://localhost:8000/api/mahjong/images/${selectedAnalysis.result.fullHandStr}/`}
+														src={`${window.location.protocol}//${window.location.hostname}/api/mahjong/images/${selectedAnalysis.result.fullHandStr}/`}
 														alt="Full Hand"
 														className="h-10 lg:h-12 object-contain drop-shadow-md"
 														onError={(e) => {

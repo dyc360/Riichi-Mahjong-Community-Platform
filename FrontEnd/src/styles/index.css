@@ -6,18 +6,23 @@
   :root {
   }
 
+  html {
+    @apply min-h-screen;
+    background-color: rgb(var(--bg-color));
+  }
+
   body {
-    @apply m-0 min-h-screen antialiased transition-colors duration-300;
+    @apply m-0 min-h-screen;
   }
 
   /* 暗色主题基础样式 */
   .dark body {
-    @apply bg-slate-950 text-slate-100;
+    @apply text-slate-100;
   }
 
   /* 亮色主题基础样式 */
   .light body {
-    @apply bg-gray-50 text-slate-900;
+    @apply text-slate-900;
   }
 
   /* 登录页面卡片样式适配 */

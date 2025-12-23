@@ -6,7 +6,7 @@ import { HomePageHeader, MainNavigation } from '../components/homePageComp';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCategories, getCategoryDisplayName } from '../contexts/CategoriesContext';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = '/api';
 
 interface ArticleDetail {
   id: number;

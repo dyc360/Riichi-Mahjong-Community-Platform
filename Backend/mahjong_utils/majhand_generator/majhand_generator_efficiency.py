@@ -132,7 +132,8 @@ def convert_num_to_str(tile_13_in_hand: list[int]) -> list[str]:
     for tile in tile_13_in_hand:
         # print(tile)
         tiles_34_array[tile] += 1
-    tile_strs = TilesConverter.array_34_to_one_line_string(tiles_34_array)
+    tiles_136_array = TilesConverter.to_136_array(tiles_34_array)
+    tile_strs = TilesConverter.to_one_line_string(tiles_136_array)
     return tile_strs
 
 def convert_waiting_tiles_num_to_str(waiting_tiles: list[list[int]]) -> list[list[str]]:
@@ -148,19 +149,9 @@ if __name__ == "__main__":
     shanten_numbers = calculate_hand_shanten(tiles_34_array, ukeire_tile, tile_13_in_hand)
     waiting_tiles = calculate_hand_waiting_tiles(tiles_34_array, ukeire_tile, tile_13_in_hand)
     waiting_tiles_str = convert_waiting_tiles_num_to_str(waiting_tiles)
-    # print(f"Tiles 34 array: {TilesConverter.array_34_to_one_line_string(tiles_34_array)}")
-    # # print(f"Tile 13 in hand: {tile_13_in_hand}")
-    # print(f"Ukeire tile: {ukeire_tile_str}")
-    # print(f"Shanten numbers after discarding each tile: {shanten_numbers}")
-    # print(f"Waiting tiles: {waiting_tiles_str}")
-    # print(f"tile num: {tile_num}")
-    tile_34_array, tile_num, tile_13_in_hand, new_ukeire_tile, shanten_numbers, waiting_tiles, is_tenpai \
-        = process_efficiency(tiles_34_array, tile_num, tile_13_in_hand, ukeire_tile, 0)
-    print(f"After discarding tile index 0:")
-    print(tile_34_array)
-    print(tile_num)
-    print(tile_13_in_hand)
-    print(f"New ukeire tile: {new_ukeire_tile}")
-    print(f"Shanten numbers: {shanten_numbers}")
-    print(f"Waiting tiles: {waiting_tiles}")
-    print(f"Is tenpai: {is_tenpai}")
+    print(f"Tiles 34 array: {TilesConverter.to_one_line_string(TilesConverter.to_136_array(tiles_34_array))}")
+    # print(f"Tile 13 in hand: {tile_13_in_hand}")
+    print(f"Ukeire tile: {ukeire_tile_str}")
+    print(f"Shanten numbers after discarding each tile: {shanten_numbers}")
+    print(f"Waiting tiles: {waiting_tiles_str}")
+    print(f"tile num: {tile_num}")

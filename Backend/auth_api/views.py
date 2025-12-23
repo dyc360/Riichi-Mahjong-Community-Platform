@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import login
 from .serializers import UserRegistrationSerializer, UserLoginSerializer, UserProfileSerializer
 from .utils import JWTManager
 from .models import CustomUser
@@ -76,6 +77,10 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
+    @csrf_exempt
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
     def post(self, request):
         print("=== 收到登录请求 ===")
         print("请求数据:", request.data)
@@ -89,6 +94,9 @@ class LoginView(APIView):
                 user = serializer.validated_data['user']
                 print(f"用户认证成功: {user.username}")
 
+                # 登录用户，设置session
+                login(request, user)
+
                 # 生成 JWT token
                 token = JWTManager.generate_token(user)
                 print("Token 生成成功")
@@ -100,7 +108,8 @@ class LoginView(APIView):
                     'user': {
                         'id': user.id,
                         'username': user.username,
-                        'email': user.email
+                        'email': user.email,
+                        'is_staff': user.is_staff
                     }
                 }, status=status.HTTP_200_OK)
             else:

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface MarkdownToolbarProps {
 	content: string;
@@ -7,7 +7,6 @@ interface MarkdownToolbarProps {
 	imageInputRef?: React.RefObject<HTMLInputElement | null>; // 可选，如果不提供则组件内部创建
 	fetchPosts?: (params?: any) => Promise<any[]>; // 兼容不同的 fetchPosts 签名，使用 any 以支持各种参数类型
 	compact?: boolean; // 是否使用紧凑模式（用于回复）
-	onImageSelect?: (e: React.ChangeEvent<HTMLInputElement>) => void; // 可选的图片选择处理函数
 }
 
 export default function MarkdownToolbar({
@@ -16,8 +15,7 @@ export default function MarkdownToolbar({
 	textareaRef,
 	imageInputRef: externalImageInputRef,
 	fetchPosts,
-	compact = false,
-	onImageSelect: externalOnImageSelect
+	compact = false
 }: MarkdownToolbarProps) {
 	const internalImageInputRef = useRef<HTMLInputElement>(null);
 	const imageInputRef = externalImageInputRef || internalImageInputRef;
@@ -39,69 +37,6 @@ export default function MarkdownToolbar({
 			}
 		};
 	}, []);
-
-	// 使用 ref 存储最新的 content 和 setContent，以便在事件处理中访问
-	const contentRef = useRef(content);
-	const setContentRef = useRef(setContent);
-	const textareaRefRef = useRef(textareaRef);
-
-	useEffect(() => {
-		contentRef.current = content;
-		setContentRef.current = setContent;
-		textareaRefRef.current = textareaRef;
-	}, [content, setContent, textareaRef]);
-
-	// 处理图片文件选择
-	const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (!file) return;
-
-		if (!file.type.startsWith('image/')) {
-			alert('请选择图片文件');
-			return;
-		}
-
-		if (file.size > 5 * 1024 * 1024) {
-			alert('图片大小不能超过 5MB');
-			return;
-		}
-
-		const reader = new FileReader();
-		reader.onload = (event) => {
-			const base64 = event.target?.result as string;
-			if (!base64) return;
-
-			const textarea = textareaRefRef.current.current;
-			if (!textarea) return;
-
-			const start = textarea.selectionStart;
-			const end = textarea.selectionEnd;
-			const currentContent = contentRef.current;
-			const textBefore = currentContent.substring(0, start);
-			const textAfter = currentContent.substring(end);
-
-			const imageHtml = `\n<img src="${base64}" alt="图片" style="max-width: 100%; height: auto; display: block; margin: 1rem auto;" />\n`;
-			const newContent = textBefore + imageHtml + textAfter;
-			
-			setContentRef.current(newContent);
-
-			setTimeout(() => {
-				textarea.focus();
-				const newCursorPos = start + imageHtml.length;
-				textarea.setSelectionRange(newCursorPos, newCursorPos);
-			}, 0);
-		};
-
-		reader.onerror = () => {
-			alert('读取图片文件失败，请重试');
-		};
-
-		reader.readAsDataURL(file);
-		e.target.value = '';
-	}, []);
-
-	// 如果提供了外部的 onImageSelect，使用它；否则使用内部的 handleImageSelect
-	const finalHandleImageSelect = externalOnImageSelect || handleImageSelect;
 
 	// 插入格式标记的辅助函数
 	const insertFormat = (before: string, after: string = '', placeholder: string = '') => {
@@ -277,6 +212,53 @@ export default function MarkdownToolbar({
 		setImageUrl("");
 	};
 
+	// 处理图片文件选择
+	const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+
+		if (!file.type.startsWith('image/')) {
+			alert('请选择图片文件');
+			return;
+		}
+
+		if (file.size > 5 * 1024 * 1024) {
+			alert('图片大小不能超过 5MB');
+			return;
+		}
+
+		const reader = new FileReader();
+		reader.onload = (event) => {
+			const base64 = event.target?.result as string;
+			if (!base64) return;
+
+			const textarea = textareaRef.current;
+			if (!textarea) return;
+
+			const start = textarea.selectionStart;
+			const end = textarea.selectionEnd;
+			const textBefore = content.substring(0, start);
+			const textAfter = content.substring(end);
+
+			const imageHtml = `\n<img src="${base64}" alt="图片" style="max-width: 100%; height: auto; display: block; margin: 1rem auto;" />\n`;
+			const newContent = textBefore + imageHtml + textAfter;
+			
+			setContent(newContent);
+
+			setTimeout(() => {
+				textarea.focus();
+				const newCursorPos = start + imageHtml.length;
+				textarea.setSelectionRange(newCursorPos, newCursorPos);
+			}, 0);
+		};
+
+		reader.onerror = () => {
+			alert('读取图片文件失败，请重试');
+		};
+
+		reader.readAsDataURL(file);
+		e.target.value = '';
+	};
 
 	const buttonSize = compact ? 'p-1.5' : 'p-2';
 	const iconSize = compact ? 'w-3.5 h-3.5' : 'w-4 h-4';
@@ -291,7 +273,7 @@ export default function MarkdownToolbar({
 					ref={internalImageInputRef}
 					type="file"
 					accept="image/*"
-					onChange={finalHandleImageSelect}
+					onChange={handleImageSelect}
 					className="hidden"
 				/>
 			)}

@@ -1,9 +1,18 @@
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 import datetime
 
+# Add project paths to sys.path to ensure our local mahjong_utils is used
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR
+MAHJONG_UTILS_PATH = BASE_DIR / 'mahjong_utils'
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+if str(MAHJONG_UTILS_PATH) not in sys.path:
+    sys.path.insert(0, str(MAHJONG_UTILS_PATH))
 
 SECRET_KEY = 'django-insecure-your-secret-key-here'
 
@@ -74,12 +83,17 @@ DATABASES = {
         'NAME': 'mahjong_db',
         'USER': 'majhub_developer',
         'PASSWORD': 'Mahjong_123',
-        'HOST': '120.53.120.90',  # 数据库主机
-        'PORT': '8003',         # 数据库端口
+        'HOST': 'db',  # 数据库主机
+        'PORT': '3306',         # 数据库端口
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'charset': 'utf8mb4',
+            'connect_timeout': 60,
+            'read_timeout': 60,
+            'write_timeout': 60,
         },
+        'CONN_MAX_AGE': 60,
+        'ATOMIC_REQUESTS': False,
     }
 }
 
@@ -110,6 +124,15 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Vite 默认端口
     "http://127.0.0.1:5173",
 ]
+CSRF_TRUSTED_ORIGINS = [
+    "https://120.53.120.90",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
@@ -131,7 +154,17 @@ JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_DELTA = datetime.timedelta(days=7)  # 使用 datetime.timedelta
 
 # Mahjim Service Configuration
-MAHJIM_SERVICE_URL = 'http://localhost:8081'
+MAHJIM_SERVICE_URL = 'http://mahjim:8080'
+
+# Celery配置
+# 支持从环境变量读取，Docker环境中使用redis服务名，本地开发使用localhost
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Shanghai'
+CELERY_ENABLE_UTC = True
 
 # Celery配置
 # 支持从环境变量读取，Docker环境中使用redis服务名，本地开发使用localhost

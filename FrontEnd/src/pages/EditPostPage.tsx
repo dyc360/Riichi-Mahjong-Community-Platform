@@ -493,55 +493,15 @@ export default function EditPostPage() {
 														prose-code:text-slate-800 dark:prose-code:text-slate-200
 														prose-pre:bg-slate-100 dark:prose-pre:bg-slate-900
 														prose-img:max-w-full prose-img:h-auto prose-img:my-4">
-														{(() => {
-															// 分割内容：将 HTML img 标签和 Markdown 内容分开处理
-															const hasImgTag = formData.content.includes('<img');
-															if (hasImgTag) {
-																const parts: React.ReactNode[] = [];
-																let lastIndex = 0;
-																// 使用更精确的正则表达式匹配 img 标签（包括自闭合标签）
-																const imgRegex = /<img[^>]*\/?>/g;
-																let match;
-																
-																while ((match = imgRegex.exec(formData.content)) !== null) {
-																	// 添加 img 标签之前的 Markdown 内容
-																	if (match.index > lastIndex) {
-																		const markdownPart = formData.content.substring(lastIndex, match.index);
-																		if (markdownPart.trim()) {
-																			parts.push(
-																				<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
-																					{markdownPart}
-																				</ReactMarkdown>
-																			);
-																		}
-																	}
-																	// 添加 img 标签（使用 dangerouslySetInnerHTML）
-																	parts.push(
-																		<span key={`img-${match.index}`} dangerouslySetInnerHTML={{ __html: match[0] }} />
-																	);
-																	lastIndex = match.index + match[0].length;
-																}
-																// 添加最后剩余的 Markdown 内容
-																if (lastIndex < formData.content.length) {
-																	const markdownPart = formData.content.substring(lastIndex);
-																	if (markdownPart.trim()) {
-																		parts.push(
-																			<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
-																				{markdownPart}
-																			</ReactMarkdown>
-																		);
-																	}
-																}
-																return <>{parts}</>;
-															}
-															return (
-																<ReactMarkdown 
-																	rehypePlugins={[rehypeRaw]}
-																>
-																	{formData.content}
-																</ReactMarkdown>
-															);
-														})()}
+														{formData.content.includes('<img') ? (
+															<div dangerouslySetInnerHTML={{ __html: formData.content }} />
+														) : (
+															<ReactMarkdown 
+																rehypePlugins={[rehypeRaw]}
+															>
+																{formData.content}
+															</ReactMarkdown>
+														)}
 													</div>
 												) : (
 													<p className="text-slate-400 dark:text-slate-500 text-sm">预览将显示在这里...</p>
@@ -573,55 +533,15 @@ export default function EditPostPage() {
 															prose-code:text-slate-800 dark:prose-code:text-slate-200
 															prose-pre:bg-slate-100 dark:prose-pre:bg-slate-900
 															prose-img:max-w-full prose-img:h-auto prose-img:my-4">
-															{(() => {
-																// 分割内容：将 HTML img 标签和 Markdown 内容分开处理
-																const hasImgTag = formData.content.includes('<img');
-																if (hasImgTag) {
-																	const parts: React.ReactNode[] = [];
-																	let lastIndex = 0;
-																	// 使用更精确的正则表达式匹配 img 标签（包括自闭合标签）
-																	const imgRegex = /<img[^>]*\/?>/g;
-																	let match;
-																	
-																	while ((match = imgRegex.exec(formData.content)) !== null) {
-																		// 添加 img 标签之前的 Markdown 内容
-																		if (match.index > lastIndex) {
-																			const markdownPart = formData.content.substring(lastIndex, match.index);
-																			if (markdownPart.trim()) {
-																				parts.push(
-																					<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
-																						{markdownPart}
-																					</ReactMarkdown>
-																				);
-																			}
-																		}
-																		// 添加 img 标签（使用 dangerouslySetInnerHTML）
-																		parts.push(
-																			<span key={`img-${match.index}`} dangerouslySetInnerHTML={{ __html: match[0] }} />
-																		);
-																		lastIndex = match.index + match[0].length;
-																	}
-																	// 添加最后剩余的 Markdown 内容
-																	if (lastIndex < formData.content.length) {
-																		const markdownPart = formData.content.substring(lastIndex);
-																		if (markdownPart.trim()) {
-																			parts.push(
-																				<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
-																					{markdownPart}
-																				</ReactMarkdown>
-																			);
-																		}
-																	}
-																	return <>{parts}</>;
-																}
-																return (
-																	<ReactMarkdown 
-																		rehypePlugins={[rehypeRaw]}
-																	>
-																		{formData.content}
-																	</ReactMarkdown>
-																);
-															})()}
+															{formData.content.includes('<img') ? (
+																<div dangerouslySetInnerHTML={{ __html: formData.content }} />
+															) : (
+																<ReactMarkdown 
+																	rehypePlugins={[rehypeRaw]}
+																>
+																	{formData.content}
+																</ReactMarkdown>
+															)}
 														</div>
 													) : (
 														<p className="text-slate-400 dark:text-slate-500 text-sm">预览将显示在这里...</p>

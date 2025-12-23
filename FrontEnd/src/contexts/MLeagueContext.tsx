@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo } 
 import type { ReactNode } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = '/api';
 
 export interface MLeagueRanking {
 	id: number;
@@ -643,7 +643,6 @@ export function MLeagueProvider({ children }: { children: ReactNode }) {
 	}, [fetchRankings, fetchPlayerStats, fetchPointsData, fetchSchedule]);
 
 	// 定期检查缓存是否过期，如果过期则自动刷新
-	// 同时设置每天0:10自动更新数据
 	useEffect(() => {
 		const checkAndRefreshCache = () => {
 			// 检查排名数据缓存
@@ -692,80 +691,14 @@ export function MLeagueProvider({ children }: { children: ReactNode }) {
 			}
 		};
 
-		// 检查是否到了每天0:10的更新时间
-		const checkDailyUpdate = () => {
-			const now = new Date();
-			const hours = now.getHours();
-			const minutes = now.getMinutes();
-			
-			// 检查是否在0:10-0:11之间（给1分钟的窗口期）
-			if (hours === 0 && minutes >= 10 && minutes < 11) {
-				// 检查上次每日更新的时间戳
-				const lastDailyUpdateKey = 'mleague_last_daily_update';
-				const lastDailyUpdate = localStorage.getItem(lastDailyUpdateKey);
-				const today = now.toDateString();
-				
-				// 如果今天还没有更新过，则执行更新
-				if (!lastDailyUpdate || lastDailyUpdate !== today) {
-					console.log('🔄 执行每日0:10自动更新...');
-					// 强制刷新所有数据
-					fetchRankings(false);
-					fetchPlayerStats(false);
-					fetchPointsData(false);
-					
-					// 刷新当前赛季的赛程数据
-					const currentYear = now.getFullYear();
-					const currentMonth = now.getMonth() + 1;
-					const seasonStartYear = currentMonth >= 9 ? currentYear : currentYear - 1;
-					const seasonEndYear = seasonStartYear + 1;
-					
-					// 清除赛程缓存并重新加载当前赛季数据
-					clearSchedule();
-					
-					// 根据当前月份决定加载哪些月份的数据
-					if (currentMonth >= 9) {
-						// 当前在赛季前半段（9-12月），加载9月到当前月份的数据
-						for (let month = 9; month <= currentMonth; month++) {
-							fetchSchedule(seasonStartYear, month, false, true);
-						}
-						// 也加载下一年的1-5月数据（未来比赛）
-						for (let month = 1; month <= 5; month++) {
-							fetchSchedule(seasonEndYear, month, false, true);
-						}
-					} else {
-						// 当前在赛季后半段（1-5月），需要加载：
-						// 1. 上一年的9-12月（已完成比赛）
-						for (let month = 9; month <= 12; month++) {
-							fetchSchedule(seasonStartYear, month, false, true);
-						}
-						// 2. 当前年的1月到当前月份
-						for (let month = 1; month <= currentMonth; month++) {
-							fetchSchedule(seasonEndYear, month, false, true);
-						}
-						// 3. 当前年剩余月份（未来比赛）
-						for (let month = currentMonth + 1; month <= 5; month++) {
-							fetchSchedule(seasonEndYear, month, false, true);
-						}
-					}
-					
-					// 更新最后更新日期
-					localStorage.setItem(lastDailyUpdateKey, today);
-				}
-			}
-		};
-
 		// 立即检查一次
 		checkAndRefreshCache();
-		checkDailyUpdate();
 
 		// 每30秒检查一次缓存是否过期
-		const interval = setInterval(() => {
-			checkAndRefreshCache();
-			checkDailyUpdate();
-		}, 30 * 1000);
+		const interval = setInterval(checkAndRefreshCache, 30 * 1000);
 
 		return () => clearInterval(interval);
-	}, [fetchRankings, fetchPlayerStats, fetchPointsData, fetchSchedule, clearSchedule]);
+	}, [fetchRankings, fetchPlayerStats, fetchPointsData]);
 
 	// 查询方法
 	const getTeamByName = useCallback((teamName: string): Team | undefined => {

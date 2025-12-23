@@ -2,8 +2,9 @@ import { createContext, useContext, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
+import { getCsrfToken } from '../utils';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = '/api';
 
 // 论坛板块接口
 export interface ForumSection {
@@ -119,6 +120,9 @@ interface ForumContextType {
 const ForumContext = createContext<ForumContextType | undefined>(undefined);
 
 export function ForumProvider({ children }: { children: ReactNode }) {
+	// 设置 axios 默认发送凭据
+	axios.defaults.withCredentials = true;
+
 	const { token } = useAuth();
 	const [sections, setSections] = useState<ForumSection[]>([]);
 	const [sectionsLoading, setSectionsLoading] = useState(false);
@@ -126,10 +130,13 @@ export function ForumProvider({ children }: { children: ReactNode }) {
 
 	// 获取认证请求头
 	const getAuthHeaders = useCallback(() => {
-		if (!token) return {};
-		return {
-			Authorization: `Bearer ${token}`,
+		const headers: any = {
+			'X-CSRFToken': getCsrfToken() || '',
 		};
+		if (token) {
+			headers.Authorization = `Bearer ${token}`;
+		}
+		return headers;
 	}, [token]);
 
 	// 获取板块列表

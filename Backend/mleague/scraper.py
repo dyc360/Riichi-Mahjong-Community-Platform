@@ -805,43 +805,9 @@ class MLeagueOfficialScraper(MLeagueScraper):
         if month_stats:
             logger.info(f"月份统计: {month_stats}")
         
-        # 去重：对于同一日期和队伍的比赛，只保留一个（优先保留有match_id和详细结果的）
-        seen_matches = {}
-        deduplicated_schedule = []
-        
-        for match in schedule:
-            # 生成唯一键：日期 + 队伍名称排序后的字符串
-            teams_names = sorted([t.get('name', '') for t in match.get('teams', [])])
-            match_key = f"{match.get('date')}-{'-'.join(teams_names)}"
-            
-            if match_key not in seen_matches:
-                # 如果还没见过这个比赛，直接添加
-                seen_matches[match_key] = match
-                deduplicated_schedule.append(match)
-            else:
-                # 如果已经见过，优先保留有match_id或更详细的比赛
-                existing_match = seen_matches[match_key]
-                existing_match_id = existing_match.get('match_id', '')
-                existing_result = existing_match.get('result')
-                current_match_id = match.get('match_id', '')
-                current_result = match.get('result')
-                
-                # 优先保留有match_id的
-                if current_match_id and not existing_match_id:
-                    index = deduplicated_schedule.index(existing_match)
-                    deduplicated_schedule[index] = match
-                    seen_matches[match_key] = match
-                    logger.debug(f"去重：用有match_id的比赛替换: {match_key}")
-                # 如果都有match_id，优先保留有详细结果的
-                elif current_match_id and existing_match_id and current_result and not existing_result:
-                    index = deduplicated_schedule.index(existing_match)
-                    deduplicated_schedule[index] = match
-                    seen_matches[match_key] = match
-                    logger.debug(f"去重：用有详细结果的比赛替换: {match_key}")
-        
-        # 按月份分组统计（去重后）
+        # 按月份分组统计
         month_groups = {}
-        for match in deduplicated_schedule:
+        for match in schedule:
             match_month = match.get('month')
             if match_month:
                 if match_month not in month_groups:
@@ -849,10 +815,9 @@ class MLeagueOfficialScraper(MLeagueScraper):
                 month_groups[match_month] += 1
         
         if month_groups:
-            logger.info(f"按月份分组统计（去重后）: {month_groups}")
+            logger.info(f"按月份分组统计: {month_groups}")
         
-        logger.info(f"历史赛季比赛去重：解析到 {len(schedule)} 场，去重后剩余 {len(deduplicated_schedule)} 场")
-        return deduplicated_schedule
+        return schedule
 
     def _parse_match_result(self, soup: BeautifulSoup, match_id: str, teams: List[Dict]) -> Optional[Dict]:
         """

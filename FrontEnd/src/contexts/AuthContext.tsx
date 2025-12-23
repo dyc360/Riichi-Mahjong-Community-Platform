@@ -6,6 +6,7 @@ export interface User {
   username: string;
   email?: string;
   avatar?: string;
+  is_staff?: boolean;
   // 可以根据需要添加其他字段
 }
 
