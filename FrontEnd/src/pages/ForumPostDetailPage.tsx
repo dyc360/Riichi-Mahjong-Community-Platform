@@ -86,17 +86,55 @@ const ReplyItem = ({ reply, user, onLike, onReply, replyingTo, nestedReplyConten
 						prose-code:text-slate-800 dark:prose-code:text-slate-200
 						prose-pre:bg-slate-100 dark:prose-pre:bg-slate-900
 						prose-img:max-w-full prose-img:h-auto prose-img:my-4">
-						{reply.content.includes('<img') ? (
-							// 如果包含 HTML img 标签，直接使用 dangerouslySetInnerHTML 渲染
-							<div dangerouslySetInnerHTML={{ __html: reply.content }} />
-						) : (
-							// 否则使用 ReactMarkdown 渲染
-							<ReactMarkdown 
-								rehypePlugins={[rehypeRaw]}
-							>
-								{reply.content}
-							</ReactMarkdown>
-						)}
+						{(() => {
+							// 分割内容：将 HTML img 标签和 Markdown 内容分开处理
+							const hasImgTag = reply.content.includes('<img');
+							if (hasImgTag) {
+								const parts: React.ReactNode[] = [];
+								let lastIndex = 0;
+								// 使用更精确的正则表达式匹配 img 标签（包括自闭合标签）
+								const imgRegex = /<img[^>]*\/?>/g;
+								let match;
+								
+								while ((match = imgRegex.exec(reply.content)) !== null) {
+									// 添加 img 标签之前的 Markdown 内容
+									if (match.index > lastIndex) {
+										const markdownPart = reply.content.substring(lastIndex, match.index);
+										if (markdownPart.trim()) {
+											parts.push(
+												<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
+													{markdownPart}
+												</ReactMarkdown>
+											);
+										}
+									}
+									// 添加 img 标签（使用 dangerouslySetInnerHTML）
+									parts.push(
+										<span key={`img-${match.index}`} dangerouslySetInnerHTML={{ __html: match[0] }} />
+									);
+									lastIndex = match.index + match[0].length;
+								}
+								// 添加最后剩余的 Markdown 内容
+								if (lastIndex < reply.content.length) {
+									const markdownPart = reply.content.substring(lastIndex);
+									if (markdownPart.trim()) {
+										parts.push(
+											<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
+												{markdownPart}
+											</ReactMarkdown>
+										);
+									}
+								}
+								return <>{parts}</>;
+							}
+							return (
+								<ReactMarkdown 
+									rehypePlugins={[rehypeRaw]}
+								>
+									{reply.content}
+								</ReactMarkdown>
+							);
+						})()}
 					</div>
 					<div className="flex items-center gap-4">
 						<button
@@ -175,15 +213,55 @@ const ReplyItem = ({ reply, user, onLike, onReply, replyingTo, nestedReplyConten
 													prose-code:text-slate-800 dark:prose-code:text-slate-200
 													prose-pre:bg-slate-100 dark:prose-pre:bg-slate-900
 													prose-img:max-w-full prose-img:h-auto prose-img:my-2">
-													{nestedContent.includes('<img') ? (
-														<div dangerouslySetInnerHTML={{ __html: nestedContent }} />
-													) : (
-														<ReactMarkdown 
-															rehypePlugins={[rehypeRaw]}
-														>
-															{nestedContent}
-														</ReactMarkdown>
-													)}
+													{(() => {
+														// 分割内容：将 HTML img 标签和 Markdown 内容分开处理
+														const hasImgTag = nestedContent.includes('<img');
+														if (hasImgTag) {
+															const parts: React.ReactNode[] = [];
+															let lastIndex = 0;
+															// 使用更精确的正则表达式匹配 img 标签（包括自闭合标签）
+															const imgRegex = /<img[^>]*\/?>/g;
+															let match;
+															
+															while ((match = imgRegex.exec(nestedContent)) !== null) {
+																// 添加 img 标签之前的 Markdown 内容
+																if (match.index > lastIndex) {
+																	const markdownPart = nestedContent.substring(lastIndex, match.index);
+																	if (markdownPart.trim()) {
+																		parts.push(
+																			<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
+																				{markdownPart}
+																			</ReactMarkdown>
+																		);
+																	}
+																}
+																// 添加 img 标签（使用 dangerouslySetInnerHTML）
+																parts.push(
+																	<span key={`img-${match.index}`} dangerouslySetInnerHTML={{ __html: match[0] }} />
+																);
+																lastIndex = match.index + match[0].length;
+															}
+															// 添加最后剩余的 Markdown 内容
+															if (lastIndex < nestedContent.length) {
+																const markdownPart = nestedContent.substring(lastIndex);
+																if (markdownPart.trim()) {
+																	parts.push(
+																		<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
+																			{markdownPart}
+																		</ReactMarkdown>
+																	);
+																}
+															}
+															return <>{parts}</>;
+														}
+														return (
+															<ReactMarkdown 
+																rehypePlugins={[rehypeRaw]}
+															>
+																{nestedContent}
+															</ReactMarkdown>
+														);
+													})()}
 												</div>
 											) : (
 												<p className="text-slate-400 dark:text-slate-500 text-xs">预览将显示在这里...</p>
@@ -629,17 +707,55 @@ export default function ForumPostDetailPage() {
 									prose-code:text-slate-800 dark:prose-code:text-slate-200
 									prose-pre:bg-slate-100 dark:prose-pre:bg-slate-900
 									prose-img:max-w-full prose-img:h-auto prose-img:my-4">
-									{post.content.includes('<img') ? (
-										// 如果包含 HTML img 标签，直接使用 dangerouslySetInnerHTML 渲染
-										<div dangerouslySetInnerHTML={{ __html: post.content }} />
-									) : (
-										// 否则使用 ReactMarkdown 渲染
-										<ReactMarkdown 
-											rehypePlugins={[rehypeRaw]}
-										>
-											{post.content}
-										</ReactMarkdown>
-									)}
+									{(() => {
+										// 分割内容：将 HTML img 标签和 Markdown 内容分开处理
+										const hasImgTag = post.content.includes('<img');
+										if (hasImgTag) {
+											const parts: React.ReactNode[] = [];
+											let lastIndex = 0;
+											// 使用更精确的正则表达式匹配 img 标签（包括自闭合标签）
+											const imgRegex = /<img[^>]*\/?>/g;
+											let match;
+											
+											while ((match = imgRegex.exec(post.content)) !== null) {
+												// 添加 img 标签之前的 Markdown 内容
+												if (match.index > lastIndex) {
+													const markdownPart = post.content.substring(lastIndex, match.index);
+													if (markdownPart.trim()) {
+														parts.push(
+															<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
+																{markdownPart}
+															</ReactMarkdown>
+														);
+													}
+												}
+												// 添加 img 标签（使用 dangerouslySetInnerHTML）
+												parts.push(
+													<span key={`img-${match.index}`} dangerouslySetInnerHTML={{ __html: match[0] }} />
+												);
+												lastIndex = match.index + match[0].length;
+											}
+											// 添加最后剩余的 Markdown 内容
+											if (lastIndex < post.content.length) {
+												const markdownPart = post.content.substring(lastIndex);
+												if (markdownPart.trim()) {
+													parts.push(
+														<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
+															{markdownPart}
+														</ReactMarkdown>
+													);
+												}
+											}
+											return <>{parts}</>;
+										}
+										return (
+											<ReactMarkdown 
+												rehypePlugins={[rehypeRaw]}
+											>
+												{post.content}
+											</ReactMarkdown>
+										);
+									})()}
 								</div>
 							</div>
 						</ModuleContainer>
@@ -698,15 +814,55 @@ export default function ForumPostDetailPage() {
 															prose-code:text-slate-800 dark:prose-code:text-slate-200
 															prose-pre:bg-slate-100 dark:prose-pre:bg-slate-900
 															prose-img:max-w-full prose-img:h-auto prose-img:my-4">
-															{replyContent.includes('<img') ? (
-																<div dangerouslySetInnerHTML={{ __html: replyContent }} />
-															) : (
-																<ReactMarkdown 
-																	rehypePlugins={[rehypeRaw]}
-																>
-																	{replyContent}
-																</ReactMarkdown>
-															)}
+															{(() => {
+																// 分割内容：将 HTML img 标签和 Markdown 内容分开处理
+																const hasImgTag = replyContent.includes('<img');
+																if (hasImgTag) {
+																	const parts: React.ReactNode[] = [];
+																	let lastIndex = 0;
+																	// 使用更精确的正则表达式匹配 img 标签（包括自闭合标签）
+																	const imgRegex = /<img[^>]*\/?>/g;
+																	let match;
+																	
+																	while ((match = imgRegex.exec(replyContent)) !== null) {
+																		// 添加 img 标签之前的 Markdown 内容
+																		if (match.index > lastIndex) {
+																			const markdownPart = replyContent.substring(lastIndex, match.index);
+																			if (markdownPart.trim()) {
+																				parts.push(
+																					<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
+																						{markdownPart}
+																					</ReactMarkdown>
+																				);
+																			}
+																		}
+																		// 添加 img 标签（使用 dangerouslySetInnerHTML）
+																		parts.push(
+																			<span key={`img-${match.index}`} dangerouslySetInnerHTML={{ __html: match[0] }} />
+																		);
+																		lastIndex = match.index + match[0].length;
+																	}
+																	// 添加最后剩余的 Markdown 内容
+																	if (lastIndex < replyContent.length) {
+																		const markdownPart = replyContent.substring(lastIndex);
+																		if (markdownPart.trim()) {
+																			parts.push(
+																				<ReactMarkdown key={`md-${lastIndex}`} rehypePlugins={[rehypeRaw]}>
+																					{markdownPart}
+																				</ReactMarkdown>
+																			);
+																		}
+																	}
+																	return <>{parts}</>;
+																}
+																return (
+																	<ReactMarkdown 
+																		rehypePlugins={[rehypeRaw]}
+																	>
+																		{replyContent}
+																	</ReactMarkdown>
+																);
+															})()}
 														</div>
 													) : (
 														<p className="text-slate-400 dark:text-slate-500 text-sm">预览将显示在这里...</p>
