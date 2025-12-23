@@ -5,11 +5,14 @@ services:
       - "8000:8000"
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings
+      - PYTHONPATH=/app:/app/mahjong_utils:/app/mahjong_utils/mahjong
     volumes:
       - ./Backend:/app
     depends_on:
-      - db
-      - mahjim
+      db:
+        condition: service_healthy
+      mahjim:
+        condition: service_started
 
   db:
     image: mysql:8.0
@@ -22,6 +25,10 @@ services:
       MYSQL_ROOT_PASSWORD: rootpassword
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   mahjim:
     build: ./Backend/mahjong_utils/mahjim

@@ -25,10 +25,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // 应用主题到HTML根元素
   useEffect(() => {
     const root = document.documentElement;
-    // 只有当class确实需要改变时才操作DOM，避免触发不必要的transition
-    if (!root.classList.contains(theme)) {
-      root.classList.remove('light', 'dark');
-      root.classList.add(theme);
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+    if (theme === 'dark') {
+      root.style.setProperty('--bg-color', '15 23 42');
+      root.style.setProperty('--text-color', '241 245 249');
+    } else {
+      root.style.setProperty('--bg-color', '249 250 251');
+      root.style.setProperty('--text-color', '15 23 42');
     }
   }, [theme]);
 

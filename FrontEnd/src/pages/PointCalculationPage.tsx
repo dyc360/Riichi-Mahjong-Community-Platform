@@ -257,7 +257,7 @@ export default function PointCalculationPage() {
 
 						{/* Hand Image Area */}
 						<div className="mb-8 flex justify-center px-4">
-								{console.log('Rendering hand picture:', handPicture)}
+								{(() => { console.log('Rendering hand picture:', handPicture); return null; })()}
 								<img 
 									src={handPicture || ''} 
 									alt="Mahjong Hand" 

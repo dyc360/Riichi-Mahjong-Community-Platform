@@ -1,9 +1,18 @@
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 import datetime
 
+# Add project paths to sys.path to ensure our local mahjong_utils is used
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR
+MAHJONG_UTILS_PATH = BASE_DIR / 'mahjong_utils'
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+if str(MAHJONG_UTILS_PATH) not in sys.path:
+    sys.path.insert(0, str(MAHJONG_UTILS_PATH))
 
 SECRET_KEY = 'django-insecure-your-secret-key-here'
 

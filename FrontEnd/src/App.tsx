@@ -29,6 +29,7 @@ import ForumHotPage from "./pages/ForumHotPage.tsx"
 import ForumLatestPage from "./pages/ForumLatestPage.tsx"
 import ForumTopicPage from "./pages/ForumTopicPage.tsx"
 import NotificationPage from "./pages/NotificationPage.tsx"
+import ChinitsuCalculationPage from "./pages/ChinitsuCalculation.tsx"
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
 
@@ -63,6 +64,7 @@ function App() {
 				<Route path="/practice" element={<PracticePage />} />
 				<Route path="/practice/point-calculation" element={<PointCalculationPage />} />
 				<Route path="/practice/efficiency-calculation" element={<EfficiencyCalculationPage />} />
+				<Route path="/practice/chinitsu-calculation" element={<ChinitsuCalculationPage />} />
 				{/* 个人中心 */}
 				<Route path="/profile" element={<ProfilePage />} />
 				{/* 行业资讯 */}

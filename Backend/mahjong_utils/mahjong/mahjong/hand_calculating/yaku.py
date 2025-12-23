@@ -7,6 +7,7 @@ class Yaku:
     yaku_id: Optional[int] = None
     tenhou_id: Optional[int] = None
     name: Optional[str] = None
+    chinese_name: Optional[str] = None
     han_open: Optional[int] = None
     han_closed: Optional[int] = None
     is_yakuman: Optional[bool] = None

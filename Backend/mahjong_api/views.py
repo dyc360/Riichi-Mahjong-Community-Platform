@@ -14,6 +14,7 @@ from mahjong_utils.majhand_generator.majhand_generator_kokushimusou import gener
 from mahjong_utils.majhand_generator.majhand_generator_win import generate_win_majhand
 from mahjong_utils.mahjong.mahjong.hand_calculating.fu import FuCalculator
 from mahjong_utils.majhand_generator.majhand_generator_efficiency import process_efficiency
+from mahjong_utils.majhand_generator.majhand_generator_chinitsu import process_efficiency_chinitsu
 
 from mahjong.tile import TilesConverter
 from mahjong.meld import Meld
@@ -254,8 +255,7 @@ class MahjongPointView(APIView):
                     has_aka_dora=True
                 )[0]
                 # print(f"win_tile_136: {win_tile_136}, closed_tiles before removal: {closed_tiles}")
-                if win_tile_136 in closed_tiles:
-                    closed_tiles.remove(win_tile_136)
+                closed_tiles.remove(win_tile_136)
                 
                 # 4. Convert closed tiles to string
                 closed_hand_str = TilesConverter.to_one_line_string(closed_tiles, print_aka_dora=True)
@@ -306,7 +306,7 @@ class MahjongPointView(APIView):
                         "kyoutaku_bonus": agari.cost.get("kyoutaku_bonus", 0),
                         "total": agari.cost.get("total", 0),
                         "yaku_level": agari.cost.get("yaku_level", 0),
-                        "yaku_name": [y.name for y in agari.yaku] if agari.yaku else [],
+                        "yaku_name": [getattr(y, 'chinese_name', getattr(y, 'name', str(y))) for y in agari.yaku] if agari.yaku else [],
                         "yaku_hanshu": yaku_hanshu,
                         "error": agari.error,
                         "fu": agari.fu,
@@ -352,15 +352,6 @@ class MahjongEfficiencyView(APIView):
             sutehai = data.get('sutehai', '')
             tile_num = data.get('tile_num', '')
             tile_13_in_hand = data.get('tile_13_in_hand', '')
-
-            # Convert sutehai to int if it's a valid value
-            if sutehai != '' and sutehai is not None:
-                try:
-                    sutehai = int(sutehai)
-                except (ValueError, TypeError):
-                    sutehai = None
-            else:
-                sutehai = None
 
             # Convert string tiles to 34-indices if necessary
             if isinstance(tile_13_in_hand, list) and len(tile_13_in_hand) > 0 and isinstance(tile_13_in_hand[0], str):
@@ -430,13 +421,123 @@ class MahjongEfficiencyView(APIView):
                 
                 tile_34_array_copy = tile_34_array[:]
                 tile_34_array_copy[new_ukeire_tile] += 1
-                tile_136_array = TilesConverter.to_136_array(tile_34_array_copy)
-                full_hand_str = TilesConverter.to_one_line_string(tile_136_array)
+                full_hand_str = TilesConverter.array_34_to_one_line_string(tile_34_array_copy)
             else:
                 # Handle case where no tiles left (End of Deck)
                 # We still return the current hand state, but with empty analysis
-                tile_136_array = TilesConverter.to_136_array(tile_34_array)
-                full_hand_str = TilesConverter.to_one_line_string(tile_136_array)
+                full_hand_str = TilesConverter.array_34_to_one_line_string(tile_34_array)
+
+            response_data = {
+                "tile_in_hand_str_list": tile_in_hand_str_list,
+                "hand_34_array": tile_34_array,
+                "tile_num": tile_num,
+                "tile_13_in_hand": tile_in_hand_str_list,
+                "ukeire_tile_str": ukeire_tile_str,
+                "ukeire_tile": new_ukeire_tile,
+                "shanten_numbers": shanten_numbers,
+                "tile_info": tile_info,
+                "all_options": all_options,
+                "is_tenpai": is_tenpai,
+                "full_hand_str": full_hand_str,
+                "best_options": best_options
+            }
+            return Response(response_data)
+        except Exception as e:
+            traceback.print_exc()
+            return Response({"error": str(e), "traceback": traceback.format_exc()}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class MahjongChinitsuView(APIView):       
+    permission_classes = [AllowAny]
+    authentication_classes = []  # 禁用认证以跳过 CSRF 检查
+
+    def post(self, request):
+        """
+        计算牌效率处理
+        请求体应包含：
+        - hand: 手牌字符串表示
+        - melds: 明杠、碰等副露信息列表（可选）
+        """
+        try:
+            data = request.data
+            hand_34_array = data.get('hand_34_array', '')
+            ukeire_tile = data.get('ukeire_tile', '')
+            sutehai = data.get('sutehai', '')
+            tile_num = data.get('tile_num', '')
+            tile_13_in_hand = data.get('tile_13_in_hand', '')
+
+            # Convert string tiles to 34-indices if necessary
+            if isinstance(tile_13_in_hand, list) and len(tile_13_in_hand) > 0 and isinstance(tile_13_in_hand[0], str):
+                def str_to_34(s):
+                    if not s: return -1
+                    suit = s[-1]
+                    num = int(s[:-1])
+                    if suit == 'm': return num - 1
+                    if suit == 'p': return 9 + num - 1
+                    if suit == 's': return 18 + num - 1
+                    if suit == 'z': return 27 + num - 1
+                    return -1
+                tile_13_in_hand = [str_to_34(s) for s in tile_13_in_hand]
+
+            tile_34_array, tile_num, tile_13_in_hand, new_ukeire_tile, shanten_numbers, waiting_tiles, is_tenpai \
+                = process_efficiency_chinitsu(hand_34_array, tile_num, tile_13_in_hand, ukeire_tile, sutehai)
+
+            def convert_tile_in_hand_to_str(tile_in_hand: list[int]) -> list[str]:
+                result = []
+                for i in tile_in_hand:
+                    suit = i // 9
+                    index_in_suit = i % 9 + 1
+                    result.append(f"{index_in_suit}{['m','p','s','z'][suit]}")
+                return result
+            
+            tile_in_hand_str_list = convert_tile_in_hand_to_str(tile_13_in_hand)
+            ukeire_tile_str = ""
+            if new_ukeire_tile != -1:
+                ukeire_tile_str = convert_tile_in_hand_to_str([new_ukeire_tile])[0]
+                
+            # 一次性在后端处理完所有逻辑
+            tile_info = [{} for _ in range(14)]
+            all_options = []
+            best_options = []
+            full_hand_str = ""
+
+            if shanten_numbers:
+                original_shanten_number = shanten_numbers[-1]
+                for i in range(14):
+                    if shanten_numbers[i] < original_shanten_number:
+                        tile_info[i]['improves_shanten'] = "Improved"
+                        all_options.append(i)
+                    elif shanten_numbers[i] == original_shanten_number:
+                        tile_info[i]['improves_shanten'] = "No Change"
+                    else:
+                        tile_info[i]['improves_shanten'] = "Worsened"
+                    tile_info[i]['shanten_number'] = shanten_numbers[i]
+                    tile_info[i]['waiting_tiles'] = convert_tile_in_hand_to_str(waiting_tiles[i])
+                    tile_info[i]['num_waiting_tiles'] = [tile_num[t] for t in waiting_tiles[i]]
+                    tile_info[i]['total_waiting_tiles'] = sum(tile_info[i]['num_waiting_tiles'])
+                    
+                if len(all_options) == 0:
+                    for i in range(14):
+                        if tile_info[i]['improves_shanten'] == "No Change":
+                            all_options.append(i)
+                
+                # 按照all_options中每个options的num_waiting_tiles总和进行排序
+                all_options.sort(key=lambda x: tile_info[x]['total_waiting_tiles'], reverse=True)
+                # 把all_options中进张数最多的某几张添加到best_options中
+                if len(all_options) > 0:
+                    max_waiting_tiles = tile_info[all_options[0]]['total_waiting_tiles']
+                    for option in all_options:
+                        if tile_info[option]['total_waiting_tiles'] == max_waiting_tiles:
+                            best_options.append(option)
+                        else:
+                            break
+                
+                tile_34_array_copy = tile_34_array[:]
+                tile_34_array_copy[new_ukeire_tile] += 1
+                full_hand_str = TilesConverter.array_34_to_one_line_string(tile_34_array_copy)
+            else:
+                # Handle case where no tiles left (End of Deck)
+                # We still return the current hand state, but with empty analysis
+                full_hand_str = TilesConverter.array_34_to_one_line_string(tile_34_array)
 
             response_data = {
                 "tile_in_hand_str_list": tile_in_hand_str_list,
