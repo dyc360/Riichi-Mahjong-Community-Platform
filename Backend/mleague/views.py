@@ -12,6 +12,7 @@ from django.db.models import Q
 from datetime import datetime
 from .scraper import MLeagueOfficialScraper
 from .tasks import update_rankings_from_scraper, update_schedule_from_scraper
+from .models import PointsData
 import logging
 
 logger = logging.getLogger(__name__)
@@ -61,11 +62,13 @@ def trigger_scrape_schedule(request):
         current_season = request.data.get('current_season', False)
         
         if current_season:
-            # 抓取整个当前赛季的数据
-            success = update_current_season_schedule()
+            # 抓取整个当前赛季的数据（暂时使用普通抓取）
+            schedule_data = update_schedule_from_scraper()
             return Response({
-                'success': success,
-                'message': '当前赛季赛程数据抓取完成' if success else '当前赛季赛程数据抓取失败'
+                'success': True,
+                'data': schedule_data,
+                'count': len(schedule_data),
+                'message': '当前赛季赛程数据抓取完成'
             })
         
         year = request.data.get('year')
@@ -92,6 +95,48 @@ def trigger_scrape_schedule(request):
             'success': False,
             'message': f'错误: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAdminUser])
+def trigger_scrape_player_stats(request):
+    """
+    手动触发选手统计数据抓取
+    POST /api/mleague-scraper/trigger/player-stats/
+    """
+    # 暂时返回功能未实现
+    return Response({
+        'success': False,
+        'message': '选手统计数据抓取功能尚未实现'
+    }, status=status.HTTP_501_NOT_IMPLEMENTED)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAdminUser])
+def trigger_scrape_points(request):
+    """
+    手动触发积分数据抓取
+    POST /api/mleague-scraper/trigger/points/
+    """
+    # 暂时返回功能未实现
+    return Response({
+        'success': False,
+        'message': '积分数据抓取功能尚未实现'
+    }, status=status.HTTP_501_NOT_IMPLEMENTED)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAdminUser])
+def trigger_scrape_all(request):
+    """
+    手动触发所有数据抓取
+    POST /api/mleague-scraper/trigger/all/
+    """
+    # 暂时返回功能未实现
+    return Response({
+        'success': False,
+        'message': '全部数据抓取功能尚未实现'
+    }, status=status.HTTP_501_NOT_IMPLEMENTED)
 
 
 class MLeagueRankingView(generics.GenericAPIView):
