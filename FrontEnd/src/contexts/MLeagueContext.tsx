@@ -490,16 +490,29 @@ export function MLeagueProvider({ children }: { children: ReactNode }) {
 
 	const fetchSchedule = useCallback(async (year?: number, month?: number, useCache: boolean = true, accumulate: boolean = false) => {
 		try {
-			// 如果没有指定年份和月份，使用当前日期
-			if (!year || !month) {
-				const now = new Date();
-				year = year || now.getFullYear();
-				month = month || now.getMonth() + 1;
+			const now = new Date();
+			const currentYear = now.getFullYear();
+			
+			// 判断是否为历史赛季查询（year存在，month为undefined，且year < 当前年份）
+			const isHistoricalSeasonQuery = year !== undefined && month === undefined && year < currentYear;
+			
+			// 如果没有指定年份，使用当前年份
+			if (!year) {
+				year = currentYear;
 			}
+			
+			// 如果不是历史赛季查询且没有指定月份，使用当前月份
+			if (!isHistoricalSeasonQuery && !month) {
+				month = now.getMonth() + 1;
+			}
+
+			// 构建缓存key（历史赛季使用不同的key）
+			const cacheKey = isHistoricalSeasonQuery 
+				? `${SCHEDULE_CACHE_KEY}_${year}_season`
+				: `${SCHEDULE_CACHE_KEY}_${year}_${month}`;
 
 			// 尝试从缓存获取
 			if (useCache) {
-				const cacheKey = `${SCHEDULE_CACHE_KEY}_${year}_${month}`;
 				const cached = localStorage.getItem(cacheKey);
 				if (cached) {
 					const { schedule: cachedSchedule, timestamp }: ScheduleCachedData = JSON.parse(cached);
@@ -508,11 +521,21 @@ export function MLeagueProvider({ children }: { children: ReactNode }) {
 					if (now - timestamp < CACHE_DURATION) {
 						if (accumulate) {
 							setSchedule(prevSchedule => {
+								// 生成唯一标识符的函数
+								const getMatchKey = (match: MatchSchedule): string => {
+									if (match.match_id && match.match_id.trim() !== '') {
+										return `${match.date}-${match.match_id}`;
+									}
+									const teamNames = match.teams.map((t: { name: string }) => t.name).sort().join('-');
+									return `${match.date}-${teamNames}`;
+								};
+								
 								// 合并缓存数据，避免重复
-								const existingIds = new Set(prevSchedule.map(match => `${match.date}-${match.match_id || match.teams.map(t => t.name).join('-')}`));
-								const newData = cachedSchedule.filter(match =>
-									!existingIds.has(`${match.date}-${match.match_id || match.teams.map(t => t.name).join('-')}`)
-								);
+								const existingIds = new Set(prevSchedule.map(getMatchKey));
+								const newData = cachedSchedule.filter(match => {
+									const matchKey = getMatchKey(match);
+									return !existingIds.has(matchKey);
+								});
 								return [...prevSchedule, ...newData];
 							});
 						} else {
@@ -529,25 +552,40 @@ export function MLeagueProvider({ children }: { children: ReactNode }) {
 			setScheduleLoading(true);
 			setScheduleError(null);
 
+			// 构建API请求参数
+			const params: { year: number; month?: number } = { year };
+			// 只有非历史赛季查询才添加month参数
+			if (!isHistoricalSeasonQuery && month !== undefined) {
+				params.month = month;
+			}
+
 			// 从后端API获取最新数据
 			const response = await axios.get<{ success: boolean; data: MatchSchedule[]; count?: number; last_updated?: string }>(
 				`${API_BASE_URL}/m-league/schedule/`,
-				{
-					params: {
-						year,
-						month
-					}
-				}
+				{ params }
 			);
 
 			if (response.data.success && response.data.data) {
 				if (accumulate) {
 					setSchedule(prevSchedule => {
+						// 生成唯一标识符的函数
+						const getMatchKey = (match: MatchSchedule): string => {
+							// 如果match_id存在且不为空，使用match_id
+							if (match.match_id && match.match_id.trim() !== '') {
+								return `${match.date}-${match.match_id}`;
+							}
+							// 否则使用日期+队伍名称（排序后）
+							const teamNames = match.teams.map((t: { name: string }) => t.name).sort().join('-');
+							return `${match.date}-${teamNames}`;
+						};
+						
 						// 合并数据，避免重复
-						const existingIds = new Set(prevSchedule.map(match => `${match.date}-${match.match_id || match.teams.map(t => t.name).join('-')}`));
-						const newData = response.data.data.filter(match =>
-							!existingIds.has(`${match.date}-${match.match_id || match.teams.map(t => t.name).join('-')}`)
-						);
+						const existingIds = new Set(prevSchedule.map(getMatchKey));
+						const newData = response.data.data.filter(match => {
+							const matchKey = getMatchKey(match);
+							return !existingIds.has(matchKey);
+						});
+						
 						return [...prevSchedule, ...newData];
 					});
 				} else {
@@ -555,12 +593,11 @@ export function MLeagueProvider({ children }: { children: ReactNode }) {
 				}
 				setScheduleLastUpdated(Date.now());
 
-				// 保存到缓存
-				const cacheKey = `${SCHEDULE_CACHE_KEY}_${year}_${month}`;
+				// 保存到缓存（使用之前构建的cacheKey）
 				const cacheData: ScheduleCachedData = {
 					schedule: response.data.data,
 					year,
-					month,
+					month: month || 0, // 历史赛季时month为0表示整个赛季
 					timestamp: Date.now()
 				};
 				localStorage.setItem(cacheKey, JSON.stringify(cacheData));
@@ -572,8 +609,13 @@ export function MLeagueProvider({ children }: { children: ReactNode }) {
 			setScheduleError(err.response?.data?.message || err.message || '获取比赛日程数据失败');
 
 			// 尝试使用缓存数据（即使过期）
-			const cacheKey = `${SCHEDULE_CACHE_KEY}_${year}_${month}`;
-			const cached = localStorage.getItem(cacheKey);
+			// 重新构建cacheKey（因为year和month可能已被修改）
+			const currentYear = new Date().getFullYear();
+			const isHistorical = year !== undefined && month === undefined && year < currentYear;
+			const fallbackCacheKey = isHistorical 
+				? `${SCHEDULE_CACHE_KEY}_${year}_season`
+				: `${SCHEDULE_CACHE_KEY}_${year}_${month || new Date().getMonth() + 1}`;
+			const cached = localStorage.getItem(fallbackCacheKey);
 			if (cached) {
 				try {
 					const { schedule: cachedSchedule, timestamp }: ScheduleCachedData = JSON.parse(cached);
@@ -601,6 +643,7 @@ export function MLeagueProvider({ children }: { children: ReactNode }) {
 	}, [fetchRankings, fetchPlayerStats, fetchPointsData, fetchSchedule]);
 
 	// 定期检查缓存是否过期，如果过期则自动刷新
+	// 同时设置每天0:10自动更新数据
 	useEffect(() => {
 		const checkAndRefreshCache = () => {
 			// 检查排名数据缓存
@@ -649,14 +692,80 @@ export function MLeagueProvider({ children }: { children: ReactNode }) {
 			}
 		};
 
+		// 检查是否到了每天0:10的更新时间
+		const checkDailyUpdate = () => {
+			const now = new Date();
+			const hours = now.getHours();
+			const minutes = now.getMinutes();
+			
+			// 检查是否在0:10-0:11之间（给1分钟的窗口期）
+			if (hours === 0 && minutes >= 10 && minutes < 11) {
+				// 检查上次每日更新的时间戳
+				const lastDailyUpdateKey = 'mleague_last_daily_update';
+				const lastDailyUpdate = localStorage.getItem(lastDailyUpdateKey);
+				const today = now.toDateString();
+				
+				// 如果今天还没有更新过，则执行更新
+				if (!lastDailyUpdate || lastDailyUpdate !== today) {
+					console.log('🔄 执行每日0:10自动更新...');
+					// 强制刷新所有数据
+					fetchRankings(false);
+					fetchPlayerStats(false);
+					fetchPointsData(false);
+					
+					// 刷新当前赛季的赛程数据
+					const currentYear = now.getFullYear();
+					const currentMonth = now.getMonth() + 1;
+					const seasonStartYear = currentMonth >= 9 ? currentYear : currentYear - 1;
+					const seasonEndYear = seasonStartYear + 1;
+					
+					// 清除赛程缓存并重新加载当前赛季数据
+					clearSchedule();
+					
+					// 根据当前月份决定加载哪些月份的数据
+					if (currentMonth >= 9) {
+						// 当前在赛季前半段（9-12月），加载9月到当前月份的数据
+						for (let month = 9; month <= currentMonth; month++) {
+							fetchSchedule(seasonStartYear, month, false, true);
+						}
+						// 也加载下一年的1-5月数据（未来比赛）
+						for (let month = 1; month <= 5; month++) {
+							fetchSchedule(seasonEndYear, month, false, true);
+						}
+					} else {
+						// 当前在赛季后半段（1-5月），需要加载：
+						// 1. 上一年的9-12月（已完成比赛）
+						for (let month = 9; month <= 12; month++) {
+							fetchSchedule(seasonStartYear, month, false, true);
+						}
+						// 2. 当前年的1月到当前月份
+						for (let month = 1; month <= currentMonth; month++) {
+							fetchSchedule(seasonEndYear, month, false, true);
+						}
+						// 3. 当前年剩余月份（未来比赛）
+						for (let month = currentMonth + 1; month <= 5; month++) {
+							fetchSchedule(seasonEndYear, month, false, true);
+						}
+					}
+					
+					// 更新最后更新日期
+					localStorage.setItem(lastDailyUpdateKey, today);
+				}
+			}
+		};
+
 		// 立即检查一次
 		checkAndRefreshCache();
+		checkDailyUpdate();
 
 		// 每30秒检查一次缓存是否过期
-		const interval = setInterval(checkAndRefreshCache, 30 * 1000);
+		const interval = setInterval(() => {
+			checkAndRefreshCache();
+			checkDailyUpdate();
+		}, 30 * 1000);
 
 		return () => clearInterval(interval);
-	}, [fetchRankings, fetchPlayerStats, fetchPointsData]);
+	}, [fetchRankings, fetchPlayerStats, fetchPointsData, fetchSchedule, clearSchedule]);
 
 	// 查询方法
 	const getTeamByName = useCallback((teamName: string): Team | undefined => {

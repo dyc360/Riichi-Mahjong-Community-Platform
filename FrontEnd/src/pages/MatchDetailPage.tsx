@@ -221,26 +221,26 @@ export default function MatchDetailPage() {
 		return `${datePart} ${weekday}`;
 	};
 
-	// 从比赛结果中构建选手到队伍的映射（用于历史赛季）
-	const buildPlayerTeamMap = (result: MatchResult): { [playerName: string]: string } => {
-		const playerTeamMap: { [playerName: string]: string } = {};
+	// 从比赛结果中构建选手到队伍的映射
+	// const buildPlayerTeamMap = (result: MatchResult): { [playerName: string]: string } => {
+	// 	const playerTeamMap: { [playerName: string]: string } = {};
 
-		if (!result || !result.rounds) return playerTeamMap;
+	// 	if (!result || !result.rounds) return playerTeamMap;
 
-		result.rounds.forEach(round => {
-			round.results.forEach(player => {
-				if (player.player_name && player.team_name) {
-					// 标准化选手名称（去除空格）
-					const normalizedName = player.player_name.replace(/\s+/g, '').trim();
-					playerTeamMap[normalizedName] = player.team_name;
-					// 也保存原始名称
-					playerTeamMap[player.player_name] = player.team_name;
-				}
-			});
-		});
+	// 	result.rounds.forEach(round => {
+	// 		round.results.forEach(player => {
+	// 			if (player.player_name && player.team_name) {
+	// 				// 标准化选手名称
+	// 				const normalizedName = player.player_name.replace(/\s+/g, '').trim();
+	// 				playerTeamMap[normalizedName] = player.team_name;
+	// 				// 也保存原始名称
+	// 				playerTeamMap[player.player_name] = player.team_name;
+	// 			}
+	// 		});
+	// 	});
 
-		return playerTeamMap;
-	};
+	// 	return playerTeamMap;
+	// };
 
 	// 计算每个队伍的总得分
 	// const calculateTeamScores = (result: MatchResult | null, matchTeams: MatchTeam[] = []) => {
