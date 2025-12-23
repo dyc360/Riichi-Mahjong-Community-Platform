@@ -4,11 +4,11 @@ from .models import ForumSection, ForumPost, ForumReply
 
 @admin.register(ForumSection)
 class ForumSectionAdmin(admin.ModelAdmin):
-    """论坛板块管理（只读，可删除）"""
+    """论坛板块管理（支持添加和修改）"""
     list_display = ['title', 'name', 'order', 'post_count']
     search_fields = ['title', 'name', 'description']
     fields = ['name', 'title', 'description', 'icon', 'order']
-    readonly_fields = ['name', 'title', 'description', 'icon', 'order']
+    list_editable = ['order']  # 允许在列表中直接编辑排序
     ordering = ['order', 'id']
 
     def post_count(self, obj):
@@ -17,12 +17,12 @@ class ForumSectionAdmin(admin.ModelAdmin):
     post_count.short_description = '帖子数'
 
     def has_change_permission(self, request, obj=None):
-        """禁用修改功能"""
-        return False
+        """允许修改功能"""
+        return True
 
     def has_add_permission(self, request):
-        """禁用添加功能"""
-        return False
+        """允许添加功能"""
+        return True
 
 
 @admin.register(ForumPost)
