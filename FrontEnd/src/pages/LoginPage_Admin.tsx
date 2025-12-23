@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { type ChangeEvent, type FormEvent, useState } from 'react'
-import {PasswordField, BrandHeader, HeroSection, BackgroundGlow, Prompt, PolicyFooter, SocialLogin} from '../components/loginComp'
+import { getCsrfToken } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
+import {PasswordField, BrandHeader, HeroSection, BackgroundGlow, Prompt, PolicyFooter, SocialLogin} from '../components/loginComp'
 
 // Shared shape for the login form data fields.
 type FormState = {
@@ -42,10 +43,14 @@ function useLoginForm(): UseLoginFormResult {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/admin/login', {
+      const response = await fetch('/api/auth/admin/login/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminNumber: form.admin_number, password: form.password }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken() || '',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ username: form.admin_number, password: form.password }),
       });
 
       if (!response.ok) {
@@ -59,7 +64,7 @@ function useLoginForm(): UseLoginFormResult {
       // localStorage.setItem('authToken', token); // AuthContext handles this
       authContext.login(token, user);
 
-      navigate('/homePage', { replace: true });
+      navigate('/home', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : '网络错误');
       console.error(err);

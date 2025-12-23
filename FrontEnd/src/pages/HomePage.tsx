@@ -278,6 +278,7 @@ const PracticeModule = () => (
 				description="来自《何切300问》的精选题目，涵盖多种复杂局面。"
 				difficulty="Medium"
 				count={300}
+				link="/practice/naze300"
 			/>
 			<PracticeCard
 				title="牌效率何切"

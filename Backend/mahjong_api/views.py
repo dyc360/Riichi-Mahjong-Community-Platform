@@ -5,8 +5,18 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.generics import RetrieveAPIView
+from .models import Naze300Question, UserNazeProgress
+from .serializers import Naze300QuestionSerializer
+from rest_framework.decorators import action
+from rest_framework.viewsets import ModelViewSet
+from django.shortcuts import get_object_or_404
+from django.db.models import Q, Count, Case, When, BooleanField
 import urllib.parse
 import traceback
+
+from .models import Naze300Question, UserNazeProgress
 
 from mahjong_utils.majhand_generator.majhand_generator_normal import generate_normal_hand
 from mahjong_utils.majhand_generator.majhand_generator_chiitoitsu import generate_chiitoitsu_hand
@@ -557,3 +567,199 @@ class MahjongChinitsuView(APIView):
         except Exception as e:
             traceback.print_exc()
             return Response({"error": str(e), "traceback": traceback.format_exc()}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+from rest_framework.permissions import BasePermission
+
+
+class IsAdminUser(BasePermission):
+    """
+    允许访问管理员用户。
+    """
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_staff)
+
+
+class Naze300QuestionViewSet(ModelViewSet):
+    """何切300问题目视图集"""
+    queryset = Naze300Question.objects.all()
+    serializer_class = Naze300QuestionSerializer
+    lookup_field = 'question_id'
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            # 管理操作需要管理员权限
+            return [IsAuthenticated(), IsAdminUser()]
+        return [AllowAny()]
+
+    def get_queryset(self):
+        queryset = Naze300Question.objects.all()
+        if self.action == 'list':
+            # 列表视图支持过滤
+            category = self.request.query_params.get('category', None)
+            difficulty = self.request.query_params.get('difficulty', None)
+
+            if category:
+                queryset = queryset.filter(category=category)
+            if difficulty:
+                queryset = queryset.filter(difficulty=difficulty)
+
+        return queryset.order_by('question_id')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        data = []
+
+        for question in queryset:
+            # 如果用户已登录，获取用户进度
+            user_progress = None
+            if request.user.is_authenticated:
+                user_progress = UserNazeProgress.objects.filter(
+                    user=request.user,
+                    question=question
+                ).first()
+
+            data.append({
+                'id': question.question_id,
+                'question_id': question.question_id,
+                'title': question.title,
+                'difficulty': question.difficulty,
+                'category': question.category,
+                'status': user_progress.status if user_progress else 'not_started',
+                'total_attempts': question.total_attempts,
+                'correct_attempts': question.correct_attempts,
+                'correct_rate': question.get_correct_rate(),
+            })
+
+        return Response({
+            'count': len(data),
+            'results': data
+        })
+
+
+class Naze300QuestionDetailView(RetrieveAPIView):
+    """何切300问题目详情视图"""
+    permission_classes = [AllowAny]
+    queryset = Naze300Question.objects.all()
+    serializer_class = Naze300QuestionSerializer
+    lookup_field = 'question_id'
+
+    def retrieve(self, request, *args, **kwargs):
+        question = self.get_object()
+
+        # 如果用户已登录，获取用户进度
+        user_progress = None
+        if request.user.is_authenticated:
+            user_progress = UserNazeProgress.objects.filter(
+                user=request.user,
+                question=question
+            ).first()
+
+        serializer = self.get_serializer(question)
+        data = serializer.data
+        data['user_progress'] = {
+            'status': user_progress.status if user_progress else 'not_started',
+            'attempts_count': user_progress.attempts_count if user_progress else 0,
+            'is_correct': user_progress.is_correct if user_progress else None,
+        } if request.user.is_authenticated else None
+
+        return Response(data)
+
+
+class Naze300QuestionSubmitView(APIView):
+    """何切300问答案提交视图"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, question_id):
+        try:
+            question = get_object_or_404(Naze300Question, question_id=question_id)
+            selected_discard = request.data.get('selected_discard')
+
+            if not selected_discard:
+                return Response(
+                    {'error': '必须选择要切的牌'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            is_correct = selected_discard == question.correct_discard
+
+            # 获取或创建用户进度记录
+            progress, created = UserNazeProgress.objects.get_or_create(
+                user=request.user,
+                question=question,
+                defaults={'status': 'in_progress'}
+            )
+
+            # 记录这次尝试
+            progress.record_attempt(is_correct)
+
+            return Response({
+                'is_correct': is_correct,
+                'correct_discard': question.correct_discard,
+                'correct_reason': question.correct_reason,
+                'additional_notes': question.additional_notes,
+                'attempts_count': progress.attempts_count,
+                'question_stats': {
+                    'total_attempts': question.total_attempts,
+                    'correct_attempts': question.correct_attempts,
+                    'correct_rate': question.get_correct_rate(),
+                }
+            })
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class Naze300ProgressView(APIView):
+    """用户何切300问进度统计视图"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # 总体统计
+        total_questions = Naze300Question.objects.count()
+        completed_questions = UserNazeProgress.objects.filter(
+            user=user,
+            status='completed'
+        ).count()
+
+        # 按难度统计
+        difficulty_stats = {}
+        for difficulty in ['easy', 'medium', 'hard']:
+            total = Naze300Question.objects.filter(difficulty=difficulty).count()
+            completed = UserNazeProgress.objects.filter(
+                user=user,
+                question__difficulty=difficulty,
+                status='completed'
+            ).count()
+            difficulty_stats[difficulty] = {
+                'total': total,
+                'completed': completed,
+                'completion_rate': round((completed / total * 100), 1) if total > 0 else 0
+            }
+
+        # 按分类统计
+        category_stats = {}
+        for category in ['basic', 'intermediate', 'advanced']:
+            total = Naze300Question.objects.filter(category=category).count()
+            completed = UserNazeProgress.objects.filter(
+                user=user,
+                question__category=category,
+                status='completed'
+            ).count()
+            category_stats[category] = {
+                'total': total,
+                'completed': completed,
+                'completion_rate': round((completed / total * 100), 1) if total > 0 else 0
+            }
+
+        return Response({
+            'total_questions': total_questions,
+            'completed_questions': completed_questions,
+            'completion_rate': round((completed_questions / total_questions * 100), 1) if total_questions > 0 else 0,
+            'difficulty_stats': difficulty_stats,
+            'category_stats': category_stats,
+        })

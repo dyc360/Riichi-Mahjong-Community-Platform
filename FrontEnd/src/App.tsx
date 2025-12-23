@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { useAuth } from './contexts/AuthContext';
 import LoginPage from "./pages/LoginPage"
 import SignUpPage from "./pages/SignUpPage"
 import LoginPage_Admin from "./pages/LoginPage_Admin"
@@ -30,8 +31,25 @@ import ForumLatestPage from "./pages/ForumLatestPage.tsx"
 import ForumTopicPage from "./pages/ForumTopicPage.tsx"
 import NotificationPage from "./pages/NotificationPage.tsx"
 import ChinitsuCalculationPage from "./pages/ChinitsuCalculation.tsx"
+import Naze300Page from "./pages/Naze300Page.tsx"
+import Naze300QuestionPage from "./pages/Naze300QuestionPage.tsx"
+import Naze300AdminPage from "./pages/Naze300AdminPage.tsx"
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+	const { user, isLoading } = useAuth();
+
+	if (isLoading) {
+		return <div>加载中...</div>;
+	}
+
+	if (!user || !user.is_staff) {
+		return <Navigate to="/home" replace />;
+	}
+
+	return <>{children}</>;
+}
 
 function App() {
 	return (
@@ -65,6 +83,9 @@ function App() {
 				<Route path="/practice/point-calculation" element={<PointCalculationPage />} />
 				<Route path="/practice/efficiency-calculation" element={<EfficiencyCalculationPage />} />
 				<Route path="/practice/chinitsu-calculation" element={<ChinitsuCalculationPage />} />
+				<Route path="/practice/naze300" element={<Naze300Page />} />
+				<Route path="/practice/naze300/:id" element={<Naze300QuestionPage />} />
+				<Route path="/practice/naze300/admin" element={<AdminRoute><Naze300AdminPage /></AdminRoute>} />
 				{/* 个人中心 */}
 				<Route path="/profile" element={<ProfilePage />} />
 				{/* 行业资讯 */}
