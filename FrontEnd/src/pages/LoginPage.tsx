@@ -220,7 +220,7 @@ function LoginForm({
       <form className="space-y-6" onSubmit={onSubmit}>
         {/* 全局错误消息 */}
         {errorMessage && (
-          <div className="rounded-lg bg-red-950/20 p-4 border border-red-800">
+          <div className="rounded-lg bg-red-50 dark:bg-red-950/20 p-4 border border-red-200 dark:border-red-800">
             <div className="flex">
               <div className="flex-shrink-0">
                 <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -228,7 +228,7 @@ function LoginForm({
                 </svg>
               </div>
               <div className="ml-3">
-                <p className="text-sm text-red-200">
+                <p className="text-sm text-red-700 dark:text-red-200">
                   {errorMessage}
                 </p>
               </div>
@@ -247,15 +247,15 @@ function LoginForm({
             autoComplete="username email"
             value={form.usernameOrEmail}
             onChange={onUsernameOrEmailChange}
-            className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 ${
+            className={`w-full rounded-xl border px-4 py-3 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 ${
               (fieldErrors.username || fieldErrors.email)
-                ? 'border-red-500 bg-red-950/20 focus:border-red-500 focus:ring-red-500/50'
-                : 'border-slate-700/80 bg-slate-950/80 focus:border-indigo-400 focus:ring-indigo-400/50'
+                ? 'border-red-500 bg-red-50 dark:bg-red-950/20 text-slate-900 dark:text-slate-100 focus:border-red-500 focus:ring-red-500/50'
+                : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-400 focus:ring-indigo-400/50'
             }`}
             placeholder="用户名或邮箱地址"
           />
           {(fieldErrors.username || fieldErrors.email) && (
-            <div className="text-sm text-red-400">
+            <div className="text-sm text-red-600 dark:text-red-400">
               {fieldErrors.username?.[0] || fieldErrors.email?.[0]}
             </div>
           )}

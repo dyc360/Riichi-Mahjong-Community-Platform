@@ -95,9 +95,14 @@ export default function Naze300Page() {
       <main className="container mx-auto px-4 py-8">
         {/* 页面标题 */}
         <div className="mb-8">
+          <div className="flex justify-between items-start mb-4">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">何切300</h1>
+            <Link to="/practice" className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 text-sm font-medium">
+              ← 返回练习列表
+            </Link>
+          </div>
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">何切300</h1>
               <p className="text-slate-600 dark:text-slate-400">
                 来自《何切300问》的精选题目，涵盖多种复杂局面。通过实战练习提升你的打牌决策能力。
               </p>
