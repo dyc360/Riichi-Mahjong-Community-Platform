@@ -588,8 +588,13 @@ class Naze300QuestionViewSet(ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
+<<<<<<< HEAD
             # 管理操作需要练习编辑者或更高权限
             return [IsAuthenticated(), HasPracticePermissions()]
+=======
+            # 管理操作需要管理员权限
+            return [IsAuthenticated(), IsAdminUser()]
+>>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
         return [AllowAny()]
 
     def get_queryset(self):

@@ -13,7 +13,10 @@
     "@tailwindcss/typography": "^0.5.19",
     "axios": "^1.13.2",
     "marked": "^17.0.1",
+<<<<<<< HEAD
     "axios": "^1.13.2",
+=======
+>>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",

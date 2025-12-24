@@ -12,7 +12,10 @@ urlpatterns = [
     path("posts/hot/", views.ForumPostHotView.as_view(), name="forum-post-hot"),
     path("posts/<int:pk>/", views.ForumPostDetailView.as_view(), name="forum-post-detail"),
     path("posts/<int:pk>/update/", views.ForumPostUpdateView.as_view(), name="forum-post-update"),
+<<<<<<< HEAD
     path("posts/<int:pk>/delete/", views.ForumPostDeleteView.as_view(), name="forum-post-delete"),
+=======
+>>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
     path("posts/by-title/<str:title>/", views.ForumPostDetailByTitleView.as_view(), name="forum-post-detail-by-title"),
     path("posts/<int:post_id>/replies/", views.ForumReplyCreateView.as_view(), name="forum-reply-create"),
     path("posts/<int:post_id>/like/", views.toggle_post_like, name="forum-post-like"),

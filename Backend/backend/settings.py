@@ -78,8 +78,10 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 # 使用 MySQL
 # 请确保已安装 mysqlclient: pip install mysqlclient
+
 DATABASES = {
     'default': {
+<<<<<<< HEAD
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'mahjong_db',
         'USER': 'majhub_developer',
@@ -95,6 +97,10 @@ DATABASES = {
         },
         'CONN_MAX_AGE': 60,
         'ATOMIC_REQUESTS': False,
+=======
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',  # 使用 SQLite
+>>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
     }
 }
 

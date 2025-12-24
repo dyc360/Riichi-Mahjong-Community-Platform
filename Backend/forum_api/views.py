@@ -8,7 +8,11 @@ from rest_framework import generics, permissions, status, exceptions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+<<<<<<< HEAD
 from auth_api.permissions import HasModerationPermissions
+=======
+from auth_api.utils import JWTManager
+>>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
 from .models import ForumSection, ForumPost, ForumReply, PostLike, ReplyLike, UserFollow, Notification
 from .serializers import (
     ForumSectionSerializer,
@@ -157,6 +161,7 @@ class ForumPostUpdateView(generics.UpdateAPIView):
         return Response(serializer.data)
 
 
+<<<<<<< HEAD
 class ForumPostDeleteView(generics.DestroyAPIView):
     """删除帖子（版主权限）"""
     queryset = ForumPost.objects.all()
@@ -169,6 +174,8 @@ class ForumPostDeleteView(generics.DestroyAPIView):
         instance.save()
 
 
+=======
+>>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
 class ForumPostDetailView(generics.RetrieveAPIView):
     queryset = ForumPost.objects.all()
     serializer_class = ForumPostDetailSerializer
@@ -228,7 +235,11 @@ class ForumPostListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):  # type: ignore[override]
+<<<<<<< HEAD
         queryset = ForumPost.objects.filter(is_deleted=False)
+=======
+        queryset = ForumPost.objects.all()
+>>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
 
         section = self.request.query_params.get("section")
         if section:
