@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { HomePageHeader, MainNavigation } from '../components/homePageComp';
 
 // Types
@@ -300,6 +301,14 @@ const EfficiencyCalculationPage = () => {
 					<MainNavigation />
 				</div>
 
+				{/* Header / Back Link */}
+				<div className="mb-8 flex items-center justify-between">
+					<h1 className="text-2xl font-bold text-slate-900 dark:text-white">牌效率何切练习</h1>
+					<Link to="/practice" className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 text-sm font-medium">
+						← 返回练习列表
+					</Link>
+				</div>
+
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 					{/* Left Column: Game Area */}
 					<div className="lg:col-span-2 space-y-6">
@@ -326,7 +335,7 @@ const EfficiencyCalculationPage = () => {
 											key={index}
 											code={code}
 											isHoverable={!!drawnTile}
-											onClick={() => drawnTile && handleDiscard(code, index, false)}
+											onClick={drawnTile ? () => handleDiscard(code, index, false) : undefined}
 										/>
 									))}
 
@@ -343,8 +352,8 @@ const EfficiencyCalculationPage = () => {
 
 								</div>
 								{!drawnTile && (
-									<div className="text-center text-red-500 font-bold mt-4">
-										牌山已空，请进入下一题
+									<div className="text-center text-red-600 font-bold mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+										牌山已空，练习结束！请点击"下一题"开始新的练习。
 									</div>
 								)}
 							</div>

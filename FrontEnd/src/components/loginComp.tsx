@@ -55,9 +55,9 @@ export function PasswordField({
           autoComplete={autoComplete}
           value={value}
           onChange={onChange}
-          className={`auth-input w-full rounded-xl border px-4 py-3 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 ${
+          className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 ${
             hasError
-              ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50'
+              ? 'border-red-500 bg-red-50 dark:bg-red-950/20 focus:border-red-500 focus:ring-red-500/50'
               : 'border-gray-300 dark:border-slate-600 focus:border-indigo-400 focus:ring-indigo-400/50'
           }`}
           placeholder={placeholder}
