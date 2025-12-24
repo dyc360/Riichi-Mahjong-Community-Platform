@@ -106,7 +106,7 @@ function App() {
 				{/* 雀魂游戏信息 */}
 				<Route path="/news/majsoul" element={<NewsMajsoulPage />} />
 				{/* 雀魂游戏信息详情 */}
-				<Route path="/news/majsoul/:title" element={<NewsMajsoulDetailPage />} />
+				<Route path="/news/majsoul/:id" element={<NewsMajsoulDetailPage />} />
 			</Routes>
 		</BrowserRouter>
 	)

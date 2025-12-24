@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import { HomePageHeader, ModuleContainer, ProNews, TeamRank, GameInfoCard, MainNavigation } from '../components/homePageComp';
 import { useNews } from '../contexts/NewsContext';
 import { useMLeague } from '../contexts/MLeagueContext';
@@ -35,6 +36,11 @@ export default function NewsPage() {
 	const location = useLocation();
 	const { getLatestNews, loading, error } = useNews();
 	const { rankings: mleagueRankings, loading: mleagueLoading, lastUpdated } = useMLeague();
+
+	// 雀魂新闻状态
+	const [majsoulNews, setMajsoulNews] = useState<any[]>([]);
+	const [majsoulLoading, setMajsoulLoading] = useState(true);
+	const [majsoulError, setMajsoulError] = useState<string | null>(null);
 
 	// 从 NewsContext 获取最新的6条新闻
 	const industryNews = getLatestNews(6).map(news => ({
@@ -74,6 +80,35 @@ export default function NewsPage() {
 
 		return () => clearTimeout(timer);
 	}, [location.hash]);
+
+	// 获取雀魂新闻
+	useEffect(() => {
+		const fetchMajsoulNews = async () => {
+			try {
+				setMajsoulLoading(true);
+				setMajsoulError(null);
+				const response = await axios.get('http://localhost:8000/api/news_api/majsoul/');
+				const articles = response.data.results || response.data;
+				// 转换为GameInfoCard需要的格式
+				const formattedNews = articles.slice(0, 4).map((article: any, index: number) => ({
+					id: article.id,
+					title: article.title,
+					subtitle: article.summary || article.content?.substring(0, 100) + '...',
+					imageUrl: article.cover_image || `https://placehold.co/100x70/${['6366f1', '10b981', 'ec4899', 'f59e0b'][index % 4]}/ffffff?text=${article.title.substring(0, 2)}`
+				}));
+				setMajsoulNews(formattedNews);
+			} catch (err) {
+				console.error('获取雀魂新闻失败:', err);
+				setMajsoulError('获取新闻失败');
+				// 如果API失败，使用静态数据作为fallback
+				setMajsoulNews(MAJSOUL_NEWS);
+			} finally {
+				setMajsoulLoading(false);
+			}
+		};
+
+		fetchMajsoulNews();
+	}, []);
 
 	return (
 		<>
@@ -167,21 +202,31 @@ export default function NewsPage() {
 					title="雀魂游戏信息"
 					description="最新游戏更新、活动与赛事信息"
 				>
-					<div className="space-y-4">
-						{MAJSOUL_NEWS.map((news, index) => (
-							<GameInfoCard
-								key={index}
-								title={news.title}
-								subtitle={news.subtitle}
-								imageUrl={news.imageUrl}
-							/>
-						))}
-					</div>
-					<div className="mt-4 text-right">
-						<Link to="/news/majsoul" className="text-sm text-indigo-500 hover:text-indigo-300 dark:text-indigo-400">
-							查看全部游戏动态 →
-						</Link>
-					</div>
+					{majsoulLoading ? (
+						<div className="flex justify-center items-center h-32">
+							<div className="text-slate-600 dark:text-slate-400">加载中...</div>
+						</div>
+					) : majsoulError ? (
+						<div className="text-red-600 dark:text-red-400 text-center py-4">{majsoulError}</div>
+					) : (
+						<>
+							<div className="space-y-4">
+								{majsoulNews.map((news, index) => (
+									<GameInfoCard
+										key={news.id || index}
+										title={news.title}
+										subtitle={news.subtitle}
+										imageUrl={news.imageUrl}
+									/>
+								))}
+							</div>
+							<div className="mt-4 text-right">
+								<Link to="/news/majsoul" className="text-sm text-indigo-500 hover:text-indigo-300 dark:text-indigo-400">
+									查看全部游戏动态 →
+								</Link>
+							</div>
+						</>
+					)}
 				</ModuleContainer>
 			</main>
 		</>

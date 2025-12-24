@@ -170,3 +170,83 @@ class ArticleListByCategoryView(generics.ListAPIView):
             status='published',
             category__slug=category_slug
         ).order_by('-published_at')
+
+
+# 雀魂新闻爬取
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])  # 临时允许任何访问，生产环境应限制
+def scrape_majsoul_news(request):
+    """
+    从雀魂官网爬取最新新闻并保存到数据库
+    """
+    from .scraper import MajSoulNewsScraper
+    from django.contrib.auth import get_user_model
+    from django.utils import timezone
+
+    User = get_user_model()
+
+    try:
+        # 获取或创建雀魂分类
+        category, created = Category.objects.get_or_create(
+            slug='majsoul',
+            defaults={
+                'name': '雀魂动态',
+                'description': '雀魂游戏更新、活动与赛事信息'
+            }
+        )
+
+        # 获取默认用户（这里使用第一个用户，生产环境应指定特定用户）
+        try:
+            default_user = User.objects.first()
+            if not default_user:
+                return Response({'error': '没有找到用户'}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response({'error': '没有找到用户'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 初始化爬取器
+        scraper = MajSoulNewsScraper()
+        news_items = scraper.fetch_latest_news(limit=10)
+
+        created_count = 0
+        updated_count = 0
+
+        for news_item in news_items:
+            print(f"处理新闻: {news_item}")  # 调试信息
+            # 检查是否已存在（基于标题）
+            existing_article = Article.objects.filter(
+                title=news_item['title'],
+                category=category
+            ).first()
+
+            if existing_article:
+                # 更新现有文章
+                existing_article.content = news_item.get('description', '')
+                existing_article.summary = news_item.get('description', '')[:300]
+                existing_article.published_at = news_item.get('published_at') or timezone.now()
+                existing_article.updated_at = timezone.now()
+                existing_article.save()
+                updated_count += 1
+            else:
+                # 创建新文章
+                Article.objects.create(
+                    title=news_item['title'],
+                    content=news_item.get('description', ''),
+                    summary=news_item.get('description', '')[:300],
+                    author=default_user,
+                    category=category,
+                    status='published',
+                    published_at=news_item.get('published_at') or timezone.now(),
+                )
+                created_count += 1
+
+        return Response({
+            'message': '雀魂新闻爬取完成',
+            'created': created_count,
+            'updated': updated_count,
+            'total_processed': len(news_items)
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'error': f'爬取失败: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
