@@ -1,3 +1,4 @@
+# auth_api/views.py
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -5,13 +6,20 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login
-from .serializers import UserRegistrationSerializer, UserLoginSerializer, UserProfileSerializer
+from .serializers import (
+    UserRegistrationSerializer,
+    UserLoginSerializer,
+    UserProfileSerializer,
+    UserStatsSerializer,
+    UserUpdateSerializer
+)
 from .utils import JWTManager
 from .models import CustomUser
 
 
 @csrf_exempt
 def home_view(request):
+    """主页视图"""
     return JsonResponse({
         'success': True,
         'message': '欢迎使用认证系统 API',
@@ -27,6 +35,7 @@ def home_view(request):
 
 
 class HealthCheckView(APIView):
+    """健康检查视图"""
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -47,6 +56,21 @@ class RegisterView(APIView):
             if serializer.is_valid():
                 user = serializer.save()
 
+                # 设置默认用户数据
+                from datetime import date
+                user.avatar = 'https://placehold.co/100x100/6366f1/ffffff?text=User'
+                user.join_date = date.today()  # 今天为加入日期
+                user.completed_exercises = 0
+                user.average_accuracy = 0.00
+                user.current_rank = '一段'
+                user.topics_published = 0
+                user.replies_count = 0
+                user.likes_received = 0
+                user.save()
+
+                print(f"✅ 新用户注册: {user.username}")
+                print(f"  设置的默认数据: 加入日期={user.join_date}, 段位={user.current_rank}")
+
                 # 生成 JWT token
                 token = JWTManager.generate_token(user)
 
@@ -57,7 +81,19 @@ class RegisterView(APIView):
                     'user': {
                         'id': user.id,
                         'username': user.username,
-                        'email': user.email
+                        'email': user.email,
+                        'avatar': user.avatar,
+                        'joinDate': user.join_date.strftime('%Y-%m-%d'),
+                        'practiceStats': {
+                            'completed': user.completed_exercises,
+                            'accuracy': float(user.average_accuracy),
+                            'rank': user.current_rank
+                        },
+                        'forumStats': {
+                            'posts': user.topics_published,
+                            'replies': user.replies_count,
+                            'likes': user.likes_received
+                        }
                     }
                 }, status=status.HTTP_201_CREATED)
             else:
@@ -67,14 +103,15 @@ class RegisterView(APIView):
                     'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            print(f"❌ 注册错误: {str(e)}")
             return Response({
                 'success': False,
                 'message': '注册过程中服务器错误',
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 class LoginView(APIView):
+    """用户登录视图"""
     permission_classes = [AllowAny]
 
     @csrf_exempt
@@ -133,11 +170,19 @@ class LoginView(APIView):
 
 
 class ProfileView(APIView):
+    """用户资料视图（支持 GET 和 PUT）"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        """获取完整的用户资料信息"""
         try:
             user = request.user
+
+            # 如果用户没有设置加入日期，使用注册日期
+            if user.join_date is None:
+                user.join_date = user.date_joined.date()
+                user.save(update_fields=['join_date'])
+
             serializer = UserProfileSerializer(user)
 
             return Response({
@@ -151,8 +196,100 @@ class ProfileView(APIView):
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def put(self, request):
+        """更新用户基础信息（用户名、邮箱、头像）"""
+        try:
+            user = request.user
+            serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                serializer.save()
+
+                # 返回更新后的完整用户信息
+                profile_serializer = UserProfileSerializer(user)
+                return Response({
+                    'success': True,
+                    'message': '资料更新成功',
+                    'user': profile_serializer.data
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    'success': False,
+                    'message': '更新失败',
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': '更新用户信息失败',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UpdateStatsView(APIView):
+    """更新用户统计数据（练习和论坛数据）"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            user = request.user
+            serializer = UserStatsSerializer(data=request.data)
+
+            if serializer.is_valid():
+                data = serializer.validated_data
+                update_fields = []
+
+                # 更新练习数据
+                if 'practiceStats' in data:
+                    practice = data['practiceStats']
+                    if 'completed' in practice:
+                        user.completed_exercises = practice['completed']
+                        update_fields.append('completed_exercises')
+                    if 'accuracy' in practice:
+                        user.average_accuracy = practice['accuracy']
+                        update_fields.append('average_accuracy')
+                    if 'rank' in practice:
+                        user.current_rank = practice['rank']
+                        update_fields.append('current_rank')
+
+                # 更新论坛数据
+                if 'forumStats' in data:
+                    forum = data['forumStats']
+                    if 'posts' in forum:
+                        user.topics_published = forum['posts']
+                        update_fields.append('topics_published')
+                    if 'replies' in forum:
+                        user.replies_count = forum['replies']
+                        update_fields.append('replies_count')
+                    if 'likes' in forum:
+                        user.likes_received = forum['likes']
+                        update_fields.append('likes_received')
+
+                if update_fields:
+                    user.save(update_fields=update_fields)
+
+                return Response({
+                    'success': True,
+                    'message': '统计数据更新成功'
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    'success': False,
+                    'message': '数据格式错误',
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': '更新统计数据失败',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class LogoutView(APIView):
+    """用户退出登录视图"""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -172,6 +309,7 @@ class LogoutView(APIView):
 
 
 class UserListView(APIView):
+    """用户列表视图"""
     permission_classes = [IsAuthenticated]  # 暂时改为所有认证用户都可以访问
 
     def get(self, request):
@@ -189,3 +327,16 @@ class UserListView(APIView):
                 'message': '获取用户列表失败',
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# 导出所有视图，确保 home_view 在导出列表中
+__all__ = [
+    'home_view',
+    'HealthCheckView',
+    'RegisterView',
+    'LoginView',
+    'ProfileView',
+    'UpdateStatsView',
+    'LogoutView',
+    'UserListView',
+]
