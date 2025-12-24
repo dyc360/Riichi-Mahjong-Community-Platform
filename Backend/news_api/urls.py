@@ -11,4 +11,6 @@ urlpatterns = [
     #path('m-league/rankings/', views.MLeagueRankingView.as_view(), name='mleague-rankings'),
     path('majsoul/', views.MajsoulNewsView.as_view(), name='majsoul-news'),
     path('home/', views.news_home_data, name='news-home-data'),
+    # 爬取API
+    path('scrape/majsoul/', views.scrape_majsoul_news, name='scrape-majsoul-news'),
 ]
