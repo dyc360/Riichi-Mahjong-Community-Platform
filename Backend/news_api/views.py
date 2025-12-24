@@ -5,6 +5,7 @@ from rest_framework.decorators import api_view, permission_classes
 from django.db.models import Q
 from .models import Article, Category, TeamRank
 from .serializers import *
+from auth_api.permissions import IsNewsEditor, HasNewsPermissions
 
 
 class CategoryListView(generics.ListAPIView):
@@ -143,8 +144,6 @@ def news_home_data(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# news_api/views.py - 在现有代码基础上添加
-
 class ArticleDetailView(generics.RetrieveAPIView):
     queryset = Article.objects.filter(status='published')
     serializer_class = ArticleDetailSerializer
@@ -157,6 +156,53 @@ class ArticleDetailView(generics.RetrieveAPIView):
         instance.save()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+
+# news_api/views.py - 在现有代码基础上添加
+
+class ArticleCreateView(generics.CreateAPIView):
+    queryset = Article.objects.all()
+    serializer_class = ArticleCreateSerializer
+    permission_classes = [IsNewsEditor]
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+
+class ArticleUpdateView(generics.UpdateAPIView):
+    queryset = Article.objects.all()
+    serializer_class = ArticleCreateSerializer
+    permission_classes = [IsNewsEditor]
+
+    def get_queryset(self):
+        # 新闻编辑者只能编辑自己的文章，除非是管理员
+        if self.request.user.groups.filter(name='admin').exists() or self.request.user.is_superuser:
+            return Article.objects.all()
+        return Article.objects.filter(author=self.request.user)
+
+
+class ArticleDeleteView(generics.DestroyAPIView):
+    queryset = Article.objects.all()
+    permission_classes = [HasNewsPermissions]
+
+    def get_queryset(self):
+        # 版主和管理员可以删除任何文章
+        if self.request.user.groups.filter(name__in=['moderator', 'admin']).exists() or self.request.user.is_superuser:
+            return Article.objects.all()
+        # 新闻编辑者只能删除自己的文章
+        return Article.objects.filter(author=self.request.user)
+
+
+class CategoryCreateView(generics.CreateAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [IsNewsEditor]
+
+
+class CategoryUpdateView(generics.UpdateAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [IsNewsEditor]
 
 
 # 按分类获取文章列表

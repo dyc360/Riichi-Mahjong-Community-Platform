@@ -6,7 +6,7 @@ import {PasswordField, BrandHeader, HeroSection, BackgroundGlow, Prompt, PolicyF
 
 // Shared shape for the login form data fields.
 type FormState = {
-  admin_number: string
+  username: string
   password: string
   remember: boolean
 }
@@ -16,7 +16,7 @@ type UseLoginFormResult = {
   isSubmitting: boolean
   showPassword: boolean
   handleSubmit: (event: FormEvent<HTMLFormElement>) => void
-  handleAdminNumberChange: (event: ChangeEvent<HTMLInputElement>) => void
+  handleUsernameChange: (event: ChangeEvent<HTMLInputElement>) => void
   handlePasswordChange: (event: ChangeEvent<HTMLInputElement>) => void
   handleRememberChange: (event: ChangeEvent<HTMLInputElement>) => void
   togglePasswordVisibility: () => void
@@ -26,7 +26,7 @@ type UseLoginFormResult = {
 // Centralises login-related state and handlers so the view stays lean.
 function useLoginForm(): UseLoginFormResult {
   const [form, setForm] = useState<FormState>({
-    admin_number: '',
+    username: '',
     password: '',
     remember: true,
   })
@@ -50,7 +50,7 @@ function useLoginForm(): UseLoginFormResult {
           'X-CSRFToken': getCsrfToken() || '',
         },
         credentials: 'include',
-        body: JSON.stringify({ username: form.admin_number, password: form.password }),
+        body: JSON.stringify({ username: form.username, password: form.password }),
       });
 
       if (!response.ok) {
@@ -73,8 +73,8 @@ function useLoginForm(): UseLoginFormResult {
     }
   }
 
-  const handleAdminNumberChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, admin_number: event.target.value }))
+  const handleUsernameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, username: event.target.value }))
   }
 
   const handlePasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -94,7 +94,7 @@ function useLoginForm(): UseLoginFormResult {
     isSubmitting,
     showPassword,
     handleSubmit,
-    handleAdminNumberChange,
+    handleUsernameChange,
     handlePasswordChange,
     handleRememberChange,
     togglePasswordVisibility,
@@ -106,7 +106,7 @@ type LoginFormProps = {
   isSubmitting: boolean
   showPassword: boolean
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
-  onAdminNumberChange: (event: ChangeEvent<HTMLInputElement>) => void
+  onUsernameChange: (event: ChangeEvent<HTMLInputElement>) => void
   onPasswordChange: (event: ChangeEvent<HTMLInputElement>) => void
   onRememberChange: (event: ChangeEvent<HTMLInputElement>) => void
   onTogglePasswordVisibility: () => void
@@ -118,7 +118,7 @@ function LoginForm({
   isSubmitting,
   showPassword,
   onSubmit,
-  onAdminNumberChange,
+  onUsernameChange,
   onPasswordChange,
   onRememberChange,
   onTogglePasswordVisibility,
@@ -127,18 +127,18 @@ function LoginForm({
     <div className="login-card rounded-3xl border p-8 shadow-glow backdrop-blur">
       <form className="space-y-6" onSubmit={onSubmit}>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="admin_number">
-            管理员编号
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="username">
+            管理员用户名
           </label>
           <input
-            id="admin_number"
+            id="username"
             type="text"
             required
-            autoComplete="admin-number"
-            value={form.admin_number}
-            onChange={onAdminNumberChange}
+            autoComplete="username"
+            value={form.username}
+            onChange={onUsernameChange}
             className="auth-input w-full rounded-xl border px-4 py-3 text-sm placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
-            placeholder="001"
+            placeholder="admin"
           />
         </div>
 
@@ -189,7 +189,7 @@ function LoginPage_Admin() {
     isSubmitting,
     showPassword,
     handleSubmit,
-    handleAdminNumberChange,
+    handleUsernameChange,
     handlePasswordChange,
     handleRememberChange,
     togglePasswordVisibility,
@@ -213,7 +213,7 @@ function LoginPage_Admin() {
             isSubmitting={isSubmitting}
             showPassword={showPassword}
             onSubmit={handleSubmit}
-            onAdminNumberChange={handleAdminNumberChange}
+            onUsernameChange={handleUsernameChange}
             onPasswordChange={handlePasswordChange}
             onRememberChange={handleRememberChange}
             onTogglePasswordVisibility={togglePasswordVisibility}

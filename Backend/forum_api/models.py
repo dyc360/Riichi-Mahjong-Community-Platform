@@ -46,6 +46,7 @@ class ForumPost(models.Model):
     replies_count = models.PositiveIntegerField(default=0, verbose_name="回复数")
     likes = models.PositiveIntegerField(default=0, verbose_name="点赞数")
     is_hot = models.BooleanField(default=False, verbose_name="是否热门")
+    is_deleted = models.BooleanField(default=False, verbose_name="是否已删除")
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")

@@ -1,8 +1,7 @@
-import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { HomePageHeader } from '../components/homePageComp';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 
 // 定义用户资料数据类型
 type UserProfile = {
@@ -24,7 +23,6 @@ type UserProfile = {
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
-  const { theme } = useTheme();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({
@@ -43,6 +41,63 @@ export default function ProfilePage() {
       likes: 89,
     },
   });
+
+  // 获取用户资料数据
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        const response = await fetch('/api/auth/profile/', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            const userData = data.user;
+            setProfile({
+              username: userData.username,
+              email: userData.email,
+              avatar: 'https://placehold.co/100x100/6366f1/ffffff?text=User', // 可以从后端获取
+              joinDate: new Date(userData.date_joined).toLocaleDateString('zh-CN'),
+              practiceStats: {
+                completed: userData.practice_completed,
+                accuracy: userData.practice_accuracy,
+                rank: userData.practice_rank,
+              },
+              forumStats: {
+                posts: userData.forum_posts,
+                replies: userData.forum_replies,
+                likes: userData.forum_likes,
+              },
+            });
+          }
+        }
+      } catch (error) {
+        console.error('获取用户资料失败:', error);
+      }
+    };
+
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [user]);
+
+  // 计算注册天数
+  const calculateDaysSinceJoin = (joinDate: string) => {
+    const join = new Date(joinDate);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - join.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const daysSinceJoin = calculateDaysSinceJoin(profile.joinDate);
 
   // 未登录状态重定向到登录页
   /*if (!user) {
@@ -190,6 +245,7 @@ export default function ProfilePage() {
                   <StatItem label="已完成练习" value={profile.practiceStats.completed} suffix="题" />
                   <StatItem label="平均正确率" value={profile.practiceStats.accuracy} suffix="%" />
                   <StatItem label="当前段位" value={profile.practiceStats.rank} />
+                  <StatItem label="注册天数" value={daysSinceJoin} suffix="天" />
                 </div>
                 <Link 
                   to="/practice" 

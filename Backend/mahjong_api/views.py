@@ -2,7 +2,8 @@ import requests
 from django.http import HttpResponse
 from django.conf import settings
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
+from auth_api.permissions import IsPracticeEditor, HasPracticePermissions
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
@@ -587,8 +588,8 @@ class Naze300QuestionViewSet(ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            # 管理操作需要管理员权限
-            return [IsAuthenticated(), IsAdminUser()]
+            # 管理操作需要练习编辑者或更高权限
+            return [IsAuthenticated(), HasPracticePermissions()]
         return [AllowAny()]
 
     def get_queryset(self):

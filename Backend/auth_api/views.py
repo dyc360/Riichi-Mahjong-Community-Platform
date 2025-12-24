@@ -132,6 +132,70 @@ class LoginView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class AdminLoginView(LoginView):
+    """管理员专用登录视图，只允许管理员用户登录"""
+
+    def post(self, request):
+        print("=== 收到管理员登录请求 ===")
+        print("请求数据:", request.data)
+
+        try:
+            serializer = UserLoginSerializer(data=request.data)
+            print("序列化器创建完成")
+
+            if serializer.is_valid():
+                print("序列化验证通过")
+                user = serializer.validated_data['user']
+                print(f"用户认证成功: {user.username}")
+
+                # 检查用户是否为管理员
+                if not (user.groups.filter(name='admin').exists() or user.is_superuser):
+                    print(f"用户 {user.username} 不是管理员，拒绝登录")
+                    return Response({
+                        'success': False,
+                        'message': '只有管理员才能登录此页面'
+                    }, status=status.HTTP_403_FORBIDDEN)
+
+                # 登录用户，设置session
+                login(request, user)
+
+                # 生成 JWT token
+                token = JWTManager.generate_token(user)
+                print("Token 生成成功")
+
+                return Response({
+                    'success': True,
+                    'message': '管理员登录成功',
+                    'token': token,
+                    'user': {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email,
+                        'is_staff': user.is_staff,
+                        'is_superuser': user.is_superuser,
+                        'groups': [group.name for group in user.groups.all()]
+                    }
+                }, status=status.HTTP_200_OK)
+            else:
+                print("序列化验证失败:", serializer.errors)
+                return Response({
+                    'success': False,
+                    'message': '管理员登录失败',
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            print("管理员登录过程异常:", str(e))
+            import traceback
+            print("详细错误:", traceback.format_exc())
+
+            return Response({
+                'success': False,
+                'message': '管理员登录过程中服务器错误',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class ProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
