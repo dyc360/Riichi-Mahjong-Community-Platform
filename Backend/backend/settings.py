@@ -9,14 +9,31 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # 检测是否在运行测试
 IS_TESTING = 'test' in sys.argv or 'pytest' in sys.argv[0]
 
-SECRET_KEY = 'django-insecure-your-secret-key-here'
-
 # Controlled via environment to match production defaults
+ENVIRONMENT = os.environ.get('DJANGO_ENV', 'production').lower()
 DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() == "true"
+
+if ENVIRONMENT == 'production' and DEBUG and not IS_TESTING:
+    raise RuntimeError("DJANGO_DEBUG must be False when DJANGO_ENV=production")
+
+
+def get_env_list(var_name: str, default: str = ""):
+    value = os.environ.get(var_name, default)
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+if DEBUG:
+    SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-secret-key')
+else:
+    try:
+        SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
+    except KeyError as exc:
+        raise RuntimeError("DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is False") from exc
+
 APPEND_SLASH = False
 
-ALLOWED_HOSTS = ['*']
-CORS_ALLOW_ALL_ORIGINS = True
+ALLOWED_HOSTS = get_env_list('DJANGO_ALLOWED_HOSTS', 'backend,localhost,127.0.0.1,120.53.120.90')
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOW_CREDENTIALS = True
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -130,32 +147,33 @@ CACHES = {
     }
 }
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React 默认端口
-    "http://127.0.0.1:3000",
-    "http://localhost:8080",  # Vue 默认端口
-    "http://127.0.0.1:8080",
-    "http://localhost:5173",  # Vite 默认端口
-    "http://127.0.0.1:5173",
-]
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = get_env_list(
+    'DJANGO_CORS_ALLOWED_ORIGINS',
+    ','.join([
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://120.53.120.90",
+    ])
+)
 
 # CSRF 信任的源（用于跨域请求）
-CSRF_TRUSTED_ORIGINS = [
-    "https://120.53.120.90",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
-JWT_SECRET_KEY = 'your-jwt-secret-key-change-this-in-production'
-JWT_ALGORITHM = 'HS256'
-JWT_EXPIRATION_DELTA = timedelta(days=7)
-
+CSRF_TRUSTED_ORIGINS = get_env_list(
+    'DJANGO_CSRF_TRUSTED_ORIGINS',
+    ','.join([
+        "https://120.53.120.90",
+        "http://120.53.120.90",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ])
+)
 LANGUAGE_CODE = 'zh-hans'
 TIME_ZONE = 'Asia/Shanghai'
 USE_I18N = True
@@ -165,13 +183,29 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+SECURE_SSL_REDIRECT = os.environ.get(
+    'DJANGO_SECURE_SSL_REDIRECT',
+    'true' if not DEBUG else 'false'
+).lower() == 'true'
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+SECURE_HSTS_SECONDS = int(os.environ.get(
+    'DJANGO_SECURE_HSTS_SECONDS',
+    '31536000' if not DEBUG else '0'
+))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0 and not DEBUG
+SECURE_HSTS_PRELOAD = SECURE_HSTS_INCLUDE_SUBDOMAINS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # JWT 配置
-JWT_SECRET_KEY = 'your-jwt-secret-key-change-this-in-production'
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_DELTA = datetime.timedelta(days=7)  # 使用 datetime.timedelta
 
 # Mahjim Service Configuration
-MAHJIM_SERVICE_URL = 'http://localhost:8081'
+MAHJIM_SERVICE_URL = os.environ.get('MAHJIM_SERVICE_URL', 'http://localhost:8081')
 
 # Celery配置
 # 支持从环境变量读取，Docker环境中使用redis服务名，本地开发使用localhost

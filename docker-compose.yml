@@ -6,7 +6,14 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings
       - PYTHONPATH=/app:/app/mahjong_utils:/app/mahjong_utils/mahjong
+      - DJANGO_ENV=development
       - DJANGO_DEBUG=False
+      - DJANGO_SECRET_KEY=dev-secret-key
+      - DJANGO_ALLOWED_HOSTS=backend,localhost,127.0.0.1,120.53.120.90
+      - DJANGO_CORS_ALLOWED_ORIGINS=http://localhost,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,https://120.53.120.90
+      - DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,https://120.53.120.90
+      - DJANGO_SECURE_SSL_REDIRECT=False
+      - DJANGO_SECURE_HSTS_SECONDS=0
       - DB_HOST=db
       - DB_PORT=3306
       - DB_NAME=mahjong_db
@@ -71,8 +78,15 @@ services:
     environment: &celery-env
       - DJANGO_SETTINGS_MODULE=backend.settings
       - PYTHONUNBUFFERED=1
+      - DJANGO_ENV=development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_SECRET_KEY=dev-secret-key
+      - DJANGO_ALLOWED_HOSTS=backend,localhost,127.0.0.1,120.53.120.90
+      - DJANGO_CORS_ALLOWED_ORIGINS=http://localhost,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,https://120.53.120.90
+      - DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,https://120.53.120.90
+      - DJANGO_SECURE_SSL_REDIRECT=False
+      - DJANGO_SECURE_HSTS_SECONDS=0
       - DB_HOST=db
       - DB_PORT=3306
       - DB_NAME=mahjong_db
