@@ -254,11 +254,11 @@ export default function Naze300QuestionPage() {
                   {question.category === 'basic' ? '基础' : question.category === 'intermediate' ? '进阶' : '高级'}
                 </span>
                 <span className={`text-sm px-3 py-1 rounded-full ${
-                  question.user_progress?.status === 'completed'
+                  (question.user_progress?.status === 'completed' || question.user_progress?.status === 'in_progress')
                     ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                     : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
                 }`}>
-                  {question.user_progress?.status === 'completed' ? '已完成' : '未完成'}
+                  {(question.user_progress?.status === 'completed' || question.user_progress?.status === 'in_progress') ? '已完成' : '未完成'}
                 </span>
               </div>
             </div>
@@ -498,12 +498,27 @@ export default function Naze300QuestionPage() {
                     setHasSubmitted(true);
                     setShowAnswer(true); // 提交后自动显示解析
 
-                    // 更新题目统计信息（如果需要）
-                    if (question) {
-                      question.total_attempts = result.question_stats.total_attempts;
-                      question.correct_attempts = result.question_stats.correct_attempts;
-                      question.correct_rate = result.question_stats.correct_rate;
-                    }
+                    setQuestion(prev => {
+                      if (!prev) return prev;
+                      const prevProgress = prev.user_progress ?? {
+                        status: 'not_started' as const,
+                        attempts_count: 0,
+                        is_correct: null,
+                      };
+
+                      return {
+                        ...prev,
+                        total_attempts: result.question_stats.total_attempts,
+                        correct_attempts: result.question_stats.correct_attempts,
+                        correct_rate: result.question_stats.correct_rate,
+                        user_progress: {
+                          ...prevProgress,
+                          status: 'completed',
+                          attempts_count: result.attempts_count ?? prevProgress.attempts_count,
+                          is_correct: result.is_correct,
+                        },
+                      };
+                    });
                   } catch (error) {
                     console.error('提交答案失败:', error);
                     alert('提交答案失败，请重试');
