@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
+    'drf_spectacular',
     'auth_api',
     'mahjong_api',
     'news_api',
@@ -133,6 +134,7 @@ REST_FRAMEWORK = {
     # 默认分页配置
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # 缓存配置 - 使用内存缓存（生产环境建议使用 Redis）

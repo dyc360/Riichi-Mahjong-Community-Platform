@@ -1,0 +1,76 @@
+{
+  "scenarios": {
+    "load_test": {
+      "name": "负载测试",
+      "description": "验证系统在正常负载下的表现",
+      "users": {
+        "min": 50,
+        "max": 200,
+        "spawn_rate": 5
+      },
+      "duration": 600,
+      "ramp_up": true
+    },
+    "stress_test": {
+      "name": "压力测试",
+      "description": "找出系统性能瓶颈和极限",
+      "users": {
+        "min": 100,
+        "max": 500,
+        "spawn_rate": 10
+      },
+      "duration": 1200,
+      "ramp_up": true,
+      "stop_on_error_rate": 0.1
+    },
+    "stability_test": {
+      "name": "稳定性测试",
+      "description": "验证系统长时间运行的稳定性",
+      "users": {
+        "min": 100,
+        "max": 100,
+        "spawn_rate": 5
+      },
+      "duration": 1800,
+      "ramp_up": true
+    },
+    "spike_test": {
+      "name": "峰值测试",
+      "description": "测试系统在突然增加的负载下的表现",
+      "users": {
+        "min": 50,
+        "max": 300,
+        "spawn_rate": 50
+      },
+      "duration": 300,
+      "ramp_up": false
+    }
+  },
+  "endpoints": {
+    "high_priority": [
+      "/api/news/articles/",
+      "/api/m-league/rankings/",
+      "/api/forum/posts/",
+      "/health/"
+    ],
+    "medium_priority": [
+      "/api/news/articles/{id}/",
+      "/api/m-league/player-stats/",
+      "/api/forum/posts/{id}/"
+    ],
+    "low_priority": [
+      "/api/mahjong/points/",
+      "/api/mahjong/images/{tiles}/"
+    ]
+  },
+  "thresholds": {
+    "response_time": {
+      "p50": 200,
+      "p95": 500,
+      "p99": 1000
+    },
+    "error_rate": 0.01,
+    "rps": 100
+  }
+}
+
