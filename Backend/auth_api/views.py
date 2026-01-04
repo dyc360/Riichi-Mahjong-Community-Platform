@@ -87,24 +87,17 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        print("=== 收到登录请求 ===")
-        print("请求数据:", request.data)
-
         try:
             serializer = UserLoginSerializer(data=request.data)
-            print("序列化器创建完成")
 
             if serializer.is_valid():
-                print("序列化验证通过")
                 user = serializer.validated_data['user']
-                print(f"用户认证成功: {user.username}")
 
                 # 登录用户，设置session
                 login(request, user)
 
                 # 生成 JWT token
                 token = JWTManager.generate_token(user)
-                print("Token 生成成功")
 
                 return Response({
                     'success': True,
@@ -118,7 +111,6 @@ class LoginView(APIView):
                     }
                 }, status=status.HTTP_200_OK)
             else:
-                print("序列化验证失败:", serializer.errors)
                 return Response({
                     'success': False,
                     'message': '登录失败',
@@ -126,10 +118,6 @@ class LoginView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            print("登录过程异常:", str(e))
-            import traceback
-            print("详细错误:", traceback.format_exc())
-
             return Response({
                 'success': False,
                 'message': '登录过程中服务器错误',

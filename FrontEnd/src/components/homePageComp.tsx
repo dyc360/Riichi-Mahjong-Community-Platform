@@ -255,7 +255,7 @@ export type PracticeCardProps = {
   title: string;
   description: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
-  count: number;
+  count: string;
   link?: string;
 };
 
@@ -275,7 +275,7 @@ export function PracticeCard({ title, description, difficulty, count, link = "#"
                 <span className={`px-2 py-1 rounded text-xs font-medium ${getDifficultyColor(difficulty)}`}>
                     {difficulty}
                 </span>
-                <span className="text-xs text-slate-400">{count} 题</span>
+                <span className="text-xs text-slate-400">{count}</span>
             </div>
             <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-indigo-600 dark:text-slate-200 dark:group-hover:text-indigo-400">
                 {title}

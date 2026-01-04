@@ -265,21 +265,21 @@ const PracticeModule = () => (
 				title="手牌算点"
 				description="计算给出的手牌的点数，提升算分速度。"
 				difficulty="Medium"
-				count={85}
+				count={"无限畅玩"}
 				link='/practice/point-calculation'
 			/>
 			<PracticeCard
 				title="清一色何切"
 				description="针对清一色的牌效率何切练习。"
 				difficulty="Hard"
-				count={40}
+				count={"无限畅玩"}
 				link="/practice/chinitsu-calculation"
 			/>
 			<PracticeCard
 				title="何切300"
 				description="来自《何切300问》的精选题目，涵盖多种复杂局面。"
 				difficulty="Medium"
-				count={300}
+				count={"300题"}
 				link="/practice/naze300"
 			/>
 			<PracticeCard
@@ -287,7 +287,7 @@ const PracticeModule = () => (
 				description="牌效练习，学习如何最大化进张。"
 				difficulty="Easy"
 				link="/practice/efficiency-calculation"
-				count={150}
+				count={"无限畅玩"}
 			/>
 		</div>
 		<div className="mt-6 text-center">
