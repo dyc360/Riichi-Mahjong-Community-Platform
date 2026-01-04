@@ -98,6 +98,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = (token: string, user: User) => {
+    // 清理旧账号的缓存资料，避免跨账号混用
+    localStorage.removeItem('userProfile');
+
     localStorage.setItem('authToken', token);
     localStorage.setItem('user', JSON.stringify(user));
     
@@ -136,7 +139,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const updateUserProfile = (profile: UserProfile) => {
     // 缓存用户资料到localStorage
-    localStorage.setItem('userProfile', JSON.stringify(profile));
+    try {
+      const serialized = JSON.stringify(profile);
+      // 避免超大头像数据占满配额
+      if (serialized.length > 4 * 1024 * 1024) {
+        throw new Error('userProfile payload exceeds 4MB');
+      }
+      localStorage.setItem('userProfile', serialized);
+    } catch (error) {
+      console.warn('缓存用户资料失败, 将跳过本地缓存:', error);
+      localStorage.removeItem('userProfile');
+    }
     setAuthState(prev => ({
       ...prev,
       userProfile: profile,
@@ -155,11 +168,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (cachedProfile) {
       try {
         const profile = JSON.parse(cachedProfile);
-        setAuthState(prev => ({
-          ...prev,
-          userProfile: profile,
-        }));
-        return profile;
+        // 只有当缓存资料与当前登录用户匹配时才使用
+        if (authState.user && profile.id === authState.user.id) {
+          setAuthState(prev => ({
+            ...prev,
+            userProfile: profile,
+          }));
+          return profile;
+        }
+
+        // 不匹配则清理，防止展示他人信息
+        localStorage.removeItem('userProfile');
       } catch (error) {
         console.warn('缓存的用户资料解析失败:', error);
         localStorage.removeItem('userProfile');

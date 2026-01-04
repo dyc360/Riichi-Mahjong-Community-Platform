@@ -35,10 +35,10 @@ export default function ProfilePage() {
 
   // 从后端获取用户资料（只在认证完成后且没有缓存时执行）
   useEffect(() => {
-    if (!isLoading && user && !userProfile) {
+    if (!isLoading && user && !userProfile && !profileLoading) {
       fetchUserProfile();
     }
-  }, [isLoading, user, userProfile, fetchUserProfile]);
+  }, [isLoading, user, userProfile, profileLoading, fetchUserProfile]);
 
   // 未登录状态重定向到登录页
   useEffect(() => {

@@ -68,7 +68,10 @@ class RoleBasedAdminSite(AdminSite):
                 # 进一步过滤模型
                 filtered_models = []
                 for model in app['models']:
-                    model_name = model['model_name']
+                    raw_model_name = model.get('model_name') or model.get('object_name')
+                    if not raw_model_name:
+                        continue
+                    model_name = raw_model_name.lower()
                     if self._user_has_model_permission(request.user, app['app_label'], model_name):
                         filtered_models.append(model)
 

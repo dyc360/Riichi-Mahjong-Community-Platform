@@ -198,10 +198,14 @@ class CustomUser(AbstractUser):
         return self.username
 
     def has_perm(self, perm, obj=None):
-        return self.is_superuser
+        if self.is_active and self.is_superuser:
+            return True
+        return super().has_perm(perm, obj)
 
     def has_module_perms(self, app_label):
-        return self.is_superuser
+        if self.is_active and self.is_superuser:
+            return True
+        return super().has_module_perms(app_label)
 
     def get_accuracy_display(self):
         """获取格式化的正确率"""

@@ -1,11 +1,17 @@
 services:
   backend:
     build: ./Backend
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings
       - PYTHONPATH=/app:/app/mahjong_utils:/app/mahjong_utils/mahjong
+      - DJANGO_DEBUG=False
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=mahjong_db
+      - DB_USER=majhub_developer
+      - DB_PASSWORD=Mahjong_123
     volumes:
       - ./Backend:/app
     depends_on:
@@ -16,8 +22,8 @@ services:
 
   db:
     image: mysql:8.0
-    ports:
-      - "8004:3306"
+    expose:
+      - "3306"
     environment:
       MYSQL_DATABASE: mahjong_db
       MYSQL_USER: majhub_developer
@@ -32,15 +38,67 @@ services:
       interval: 5s
       start_period: 30s
 
+  redis:
+    image: redis:6.2-alpine
+    expose:
+      - "6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   mahjim:
     build: ./Backend/mahjong_utils/mahjim
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
 
   frontend:
     build: ./FrontEnd
-    ports:
-      - "3000:80"
+    expose:
+      - "80"
+
+  celery-worker:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.celery
+    command: celery -A backend worker --loglevel=info --concurrency=4
+    volumes:
+      - ./Backend:/app
+    environment: &celery-env
+      - DJANGO_SETTINGS_MODULE=backend.settings
+      - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=mahjong_db
+      - DB_USER=majhub_developer
+      - DB_PASSWORD=Mahjong_123
+      - DJANGO_DEBUG=False
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+
+  celery-beat:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.celery
+    command: celery -A backend beat --loglevel=info
+    volumes:
+      - ./Backend:/app
+      - celery_beat_data:/app/celerybeat-schedule
+    environment: *celery-env
+    depends_on:
+      redis:
+        condition: service_healthy
+      celery-worker:
+        condition: service_started
 
   nginx:
     image: nginx:latest
@@ -51,9 +109,12 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./cert.pem:/etc/nginx/cert.pem
       - ./key.pem:/etc/nginx/key.pem
+      - ./Backend/staticfiles:/usr/share/nginx/html/staticfiles:ro
     depends_on:
       - backend
       - frontend
 
 volumes:
   mysql_data:
+  redis_data:
+  celery_beat_data:

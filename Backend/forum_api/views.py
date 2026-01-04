@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.core.cache import cache
 from datetime import timedelta, datetime
 import logging
+import uuid
 from rest_framework import generics, permissions, status, exceptions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -32,6 +33,53 @@ def clear_forum_cache():
         cache.delete(f'forum_posts_hot_page_{page}_size_10')
         cache.delete(f'forum_posts_latest_page_{page}_size_5')
         cache.delete(f'forum_posts_hot_page_{page}_size_5')
+
+
+NOTIFICATION_CACHE_TIMEOUT = 60
+
+
+def _get_authenticated_user(request):
+    """从请求头解析用户，失败时返回None"""
+    auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+
+    token = auth_header.split(" ")[1]
+    try:
+        return JWTManager.get_user_from_token(token)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _notification_count_cache_key(user_id: int) -> str:
+    return f"forum_notification_count:{user_id}"
+
+
+def _notification_version_key(user_id: int) -> str:
+    return f"forum_notification_version:{user_id}"
+
+
+def _get_notification_version(user_id: int) -> str:
+    version_key = _notification_version_key(user_id)
+    version = cache.get(version_key)
+    if version is None:
+        version = uuid.uuid4().hex
+        cache.set(version_key, version, None)
+    return version
+
+
+def _build_notification_list_cache_key(user_id: int, version: str, page: str, page_size: str) -> str:
+    return f"forum_notification_list:{user_id}:{version}:p{page}:s{page_size}"
+
+
+def invalidate_notification_cache(user_ids):
+    """失效通知缓存，确保列表和数量一致"""
+    if not user_ids:
+        return
+
+    for user_id in {uid for uid in user_ids if uid}:
+        cache.delete(_notification_count_cache_key(user_id))
+        cache.set(_notification_version_key(user_id), uuid.uuid4().hex, None)
 
 
 def increment_post_views(request, post_instance: ForumPost):
@@ -125,7 +173,9 @@ class ForumPostCreateView(generics.CreateAPIView):
                 
                 # 批量创建通知
                 if notifications:
+                    recipient_ids = {n.recipient_id for n in notifications if n.recipient_id}
                     Notification.objects.bulk_create(notifications)
+                    invalidate_notification_cache(recipient_ids)
                     logger = logging.getLogger(__name__)
                     logger.info(f"成功为帖子 {post.id} 创建了 {len(notifications)} 条通知")
         except Exception as e:  # noqa: BLE001
@@ -357,7 +407,9 @@ class ForumReplyCreateView(generics.CreateAPIView):
             
             # 批量创建通知
             if notifications:
+                recipient_ids = {n.recipient_id for n in notifications if n.recipient_id}
                 Notification.objects.bulk_create(notifications)
+                invalidate_notification_cache(recipient_ids)
                 logger = logging.getLogger(__name__)
                 logger.info(f"成功为回复 {reply.id} 创建了 {len(notifications)} 条通知")
         except Exception as e:  # noqa: BLE001
@@ -644,16 +696,55 @@ class NotificationListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        auth_header = self.request.META.get("HTTP_AUTHORIZATION", "")
-        if not auth_header.startswith("Bearer "):
+        user = getattr(self, "_cached_user", None)
+        if user is None:
+            user = _get_authenticated_user(self.request)
+        if not user:
             return Notification.objects.none()
 
-        token = auth_header.split(" ")[1]
-        try:
-            user = JWTManager.get_user_from_token(token)
-            return Notification.objects.filter(recipient=user)
-        except Exception:  # noqa: BLE001
-            return Notification.objects.none()
+        return Notification.objects.filter(recipient=user).select_related(
+            "related_post",
+            "related_reply",
+        )
+
+    def list(self, request, *args, **kwargs):  # type: ignore[override]
+        user = _get_authenticated_user(request)
+        if not user:
+            return Response({
+                "count": 0,
+                "next": None,
+                "previous": None,
+                "results": [],
+            })
+
+        self._cached_user = user
+        paginator = self.paginator
+        page_query_param = getattr(paginator, "page_query_param", "page")
+        page_number = request.query_params.get(page_query_param, "1")
+        page_size_param = None
+        if getattr(paginator, "page_size_query_param", None):
+            page_size_param = request.query_params.get(paginator.page_size_query_param)
+        if not page_size_param:
+            page_size_param = str(getattr(paginator, "page_size", "default"))
+
+        version = _get_notification_version(user.id)
+        cache_key = _build_notification_list_cache_key(user.id, version, str(page_number), str(page_size_param))
+        cached_payload = cache.get(cache_key)
+        if cached_payload is not None:
+            return Response(cached_payload)
+
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            response = self.get_paginated_response(serializer.data)
+            cache.set(cache_key, response.data, timeout=NOTIFICATION_CACHE_TIMEOUT)
+            return response
+
+        serializer = self.get_serializer(queryset, many=True)
+        payload = serializer.data
+        cache.set(cache_key, payload, timeout=NOTIFICATION_CACHE_TIMEOUT)
+        return Response(payload)
 
 
 # 获取未读通知数量
@@ -661,17 +752,22 @@ class NotificationListView(generics.ListAPIView):
 @permission_classes([permissions.AllowAny])
 def get_unread_notification_count(request):
     """获取未读通知数量"""
-    auth_header = request.META.get("HTTP_AUTHORIZATION", "")
-    if not auth_header.startswith("Bearer "):
+    user = _get_authenticated_user(request)
+    if not user:
         return Response({"count": 0})
 
-    token = auth_header.split(" ")[1]
+    cache_key = _notification_count_cache_key(user.id)
+    cached_count = cache.get(cache_key)
+    if cached_count is not None:
+        return Response({"count": cached_count})
+
     try:
-        user = JWTManager.get_user_from_token(token)
         count = Notification.objects.filter(recipient=user, is_read=False).count()
-        return Response({"count": count})
     except Exception:  # noqa: BLE001
         return Response({"count": 0})
+
+    cache.set(cache_key, count, timeout=NOTIFICATION_CACHE_TIMEOUT)
+    return Response({"count": count})
 
 
 # 标记通知为已读
@@ -679,18 +775,16 @@ def get_unread_notification_count(request):
 @permission_classes([permissions.AllowAny])
 def mark_notification_read(request, notification_id):
     """标记通知为已读"""
-    auth_header = request.META.get("HTTP_AUTHORIZATION", "")
-    if not auth_header.startswith("Bearer "):
+    user = _get_authenticated_user(request)
+    if not user:
         raise exceptions.PermissionDenied("未提供认证token")
 
-    token = auth_header.split(" ")[1]
     try:
-        user = JWTManager.get_user_from_token(token)
         notification = Notification.objects.get(id=notification_id, recipient=user)
-        notification.is_read = True
-        notification.save()
-        return Response({"message": "标记成功"})
-    except Notification.DoesNotExist:
-        raise exceptions.NotFound("通知不存在")
-    except Exception as e:  # noqa: BLE001
-        raise exceptions.PermissionDenied(str(e))
+    except Notification.DoesNotExist as exc:
+        raise exceptions.NotFound("通知不存在") from exc
+
+    notification.is_read = True
+    notification.save(update_fields=["is_read"])
+    invalidate_notification_cache([user.id])
+    return Response({"message": "标记成功"})

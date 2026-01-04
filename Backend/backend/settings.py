@@ -11,7 +11,8 @@ IS_TESTING = 'test' in sys.argv or 'pytest' in sys.argv[0]
 
 SECRET_KEY = 'django-insecure-your-secret-key-here'
 
-DEBUG = True
+# Controlled via environment to match production defaults
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() == "true"
 APPEND_SLASH = False
 
 ALLOWED_HOSTS = ['*']
@@ -84,11 +85,11 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'mahjong_db',
-            'USER': 'majhub_developer',
-            'PASSWORD': 'Mahjong_123',
-            'HOST': '120.53.120.90',  # 数据库主机
-            'PORT': '8003',         # 数据库端口
+            'NAME': os.environ.get('DB_NAME', 'mahjong_db'),
+            'USER': os.environ.get('DB_USER', 'majhub_developer'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'Mahjong_123'),
+            'HOST': os.environ.get('DB_HOST', 'db'),
+            'PORT': os.environ.get('DB_PORT', '3306'),
             'OPTIONS': {
                 'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
                 'charset': 'utf8mb4',
@@ -110,8 +111,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
+        'auth_api.utils.JWTAuthentication',
     ],
     # 默认分页配置
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
@@ -161,7 +161,8 @@ TIME_ZONE = 'Asia/Shanghai'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # JWT 配置

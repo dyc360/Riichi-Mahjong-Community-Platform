@@ -20,7 +20,7 @@ export const MAJSOUL_NEWS = [
 	},
 	{
 		id: 3,
-		title: "夏季锦标赛报名启动",
+		title: "新年锦标赛报名启动",
 		subtitle: "总奖金池100万，欢迎各路高手报名参加，预选赛将于下周六开始",
 		imageUrl: "https://placehold.co/100x70/ec4899/ffffff?text=Tourney"
 	},
@@ -88,19 +88,20 @@ export default function NewsPage() {
 				setMajsoulLoading(true);
 				setMajsoulError(null);
 				const response = await axios.get('/api/news/majsoul/');
-				const articles = response.data.data;
+				// 后端返回的是直接数组，不是 { data: [...] } 格式
+				const articles = Array.isArray(response.data) ? response.data : (response.data.data || []);
 				// 转换为GameInfoCard需要的格式
 				const formattedNews = articles.slice(0, 4).map((article: any, index: number) => ({
 					id: article.id,
 					title: article.title,
-					subtitle: article.summary || article.content?.substring(0, 100) + '...',
-					imageUrl: article.cover_image || `https://placehold.co/100x70/${['6366f1', '10b981', 'ec4899', 'f59e0b'][index % 4]}/ffffff?text=${article.title.substring(0, 2)}`
+					subtitle: article.description || article.summary || article.content?.substring(0, 100) + '...',
+					imageUrl: article.image_url || article.cover_image || `https://placehold.co/100x70/${['6366f1', '10b981', 'ec4899', 'f59e0b'][index % 4]}/ffffff?text=${article.title.substring(0, 2)}`
 				}));
 				setMajsoulNews(formattedNews);
 			} catch (err) {
-				console.error('获取雀魂新闻失败:', err);
-				setMajsoulError('获取新闻失败');
-				// 如果API失败，使用静态数据作为fallback
+				console.error('获取雀魂新闻失败，使用预设数据:', err);
+				// 如果API失败，提示用户并使用静态数据作为fallback
+				setMajsoulError('暂时无法获取最新雀魂新闻，已为你展示预设内容。');
 				setMajsoulNews(MAJSOUL_NEWS);
 			} finally {
 				setMajsoulLoading(false);
@@ -206,10 +207,13 @@ export default function NewsPage() {
 						<div className="flex justify-center items-center h-32">
 							<div className="text-slate-600 dark:text-slate-400">加载中...</div>
 						</div>
-					) : majsoulError ? (
-						<div className="text-red-600 dark:text-red-400 text-center py-4">{majsoulError}</div>
 					) : (
 						<>
+							{majsoulError && (
+								<div className="mb-4 text-sm text-amber-600 dark:text-amber-400" role="status">
+									{majsoulError}
+								</div>
+							)}
 							<div className="space-y-4">
 								{majsoulNews.map((news, index) => (
 									<GameInfoCard

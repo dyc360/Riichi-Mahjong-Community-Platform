@@ -92,21 +92,31 @@ class MLeagueRankingView(generics.ListAPIView):
 
 
 class MajsoulNewsView(generics.ListAPIView):
-    """雀魂新闻视图 - 直接返回预设的示例新闻数据"""
+    """雀魂新闻视图 - 返回预设的新闻数据"""
     from .serializers import MajSoulNewsSerializer
     serializer_class = MajSoulNewsSerializer
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        """返回空查询集，因为我们直接返回模拟数据"""
+        """返回空查询集，因为我们直接从爬虫获取数据"""
         from .models import MajSoulNews
         return MajSoulNews.objects.none()
 
     def list(self, request, *args, **kwargs):
-        """直接返回预设的示例新闻数据，不进行爬取"""
+        """返回预设的新闻数据，不进行爬取"""
         logger = logging.getLogger(__name__)
         
-        # 硬编码的示例新闻数据，不依赖任何外部类
+        # 获取分页参数
+        limit = request.query_params.get('limit', None)
+        if limit:
+            try:
+                limit = int(limit)
+            except ValueError:
+                limit = 20  # 默认值
+        else:
+            limit = 20  # 默认值
+        
+        # 预设的新闻数据
         default_news = [
             {
                 'id': 1,
@@ -121,8 +131,8 @@ class MajsoulNewsView(generics.ListAPIView):
             },
             {
                 'id': 2,
-                'title': '夏季锦标赛即将开启',
-                'description': '2024年夏季锦标赛报名通道已开放，欢迎所有玩家参与。本次锦标赛设置了丰厚的奖励，包括限定称号和特殊道具。',
+                'title': '新年锦标赛即将开启',
+                'description': '2026年新年锦标赛报名通道已开放，欢迎所有玩家参与。本次锦标赛设置了丰厚的奖励，包括限定称号和特殊道具。',
                 'link': 'https://mahjongsoul.yo-star.com/news/tournament-2024',
                 'image_url': 'https://placehold.co/400x200/ec4899/ffffff?text=Tournament',
                 'published_at': timezone.now().isoformat(),
@@ -165,41 +175,29 @@ class MajsoulNewsView(generics.ListAPIView):
             }
         ]
         
-        try:
-            # 支持分页参数
-            limit = self.request.query_params.get('limit', None)
-            if limit:
-                try:
-                    limit = int(limit)
-                    default_news = default_news[:limit]
-                except ValueError:
-                    pass
-            
-            # 支持搜索
-            search = self.request.query_params.get('search', None)
-            if search:
-                search_lower = search.lower()
-                default_news = [
-                    news for news in default_news
-                    if search_lower in news.get('title', '').lower() or 
-                       search_lower in news.get('description', '').lower()
-                ]
-            
-            # 支持分类筛选
-            category = self.request.query_params.get('category', None)
-            if category:
-                default_news = [
-                    news for news in default_news
-                    if news.get('category', '').lower() == category.lower()
-                ]
-            
-            logger.info(f"返回 {len(default_news)} 条示例新闻数据")
-            return Response(default_news)
-            
-        except Exception as e:
-            logger.error(f"返回示例新闻数据失败: {str(e)}", exc_info=True)
-            # 即使出错也返回默认数据
-            return Response(default_news)
+        # 应用分页
+        formatted_news = default_news[:limit]
+        
+        # 支持搜索
+        search = request.query_params.get('search', None)
+        if search:
+            search_lower = search.lower()
+            formatted_news = [
+                news for news in formatted_news
+                if search_lower in news.get('title', '').lower() or 
+                   search_lower in news.get('description', '').lower()
+            ]
+        
+        # 支持分类筛选
+        category = request.query_params.get('category', None)
+        if category:
+            formatted_news = [
+                news for news in formatted_news
+                if news.get('category', '').lower() == category.lower()
+            ]
+        
+        logger.info(f"返回预设新闻数据，共 {len(formatted_news)} 条")
+        return Response(formatted_news)
 
 
 class MajsoulNewsDetailView(generics.RetrieveAPIView):

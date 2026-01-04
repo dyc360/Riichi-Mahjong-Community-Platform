@@ -9,7 +9,7 @@ const practiceModes = [
     title: "手牌算点",
     description: "计算给出的手牌的点数，提升算分速度与准确度。",
     difficulty: "Medium",
-    count: 85,
+    count: "无限畅玩",
     link: "/practice/point-calculation",
     themeColor: "bg-blue-500", // 卡片顶部的装饰色条
     badgeColor: "text-blue-700 bg-blue-50 dark:text-blue-300 dark:bg-blue-900/30"
@@ -19,7 +19,7 @@ const practiceModes = [
     title: "清一色何切",
     description: "针对清一色多面听和复杂牌型的专项特训。",
     difficulty: "Hard",
-    count: 40,
+    count: "无限畅玩",
     link: "/practice/chinitsu-calculation",
     themeColor: "bg-rose-500",
     badgeColor: "text-rose-700 bg-rose-50 dark:text-rose-300 dark:bg-rose-900/30"
@@ -29,7 +29,7 @@ const practiceModes = [
     title: "何切 300",
     description: "来自《何切300问》的精选题目，涵盖多种复杂局面。",
     difficulty: "Medium",
-    count: 300,
+    count: "300题",
     link: "/practice/naze300",
     themeColor: "bg-indigo-600",
     badgeColor: "text-indigo-700 bg-indigo-50 dark:text-indigo-300 dark:bg-indigo-900/30",
@@ -40,7 +40,7 @@ const practiceModes = [
     title: "牌效率何切",
     description: "牌效基础练习，学习如何最大化进张概率。",
     difficulty: "Easy",
-    count: 150,
+    count: "无限畅玩",
     link: "/practice/efficiency-calculation",
     themeColor: "bg-emerald-500",
     badgeColor: "text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-900/30"
@@ -107,7 +107,7 @@ export default function PracticePage() {
                 {/* 底部信息 */}
                 <div className="pt-4 border-t border-gray-100 dark:border-slate-700/50 flex items-center justify-between text-sm">
                   <span className="text-slate-400 font-mono">
-                    {mode.count} 题
+                    {mode.count}
                   </span>
                   <span className="text-slate-900 dark:text-white font-medium group-hover:translate-x-1 transition-transform">
                     开始 →

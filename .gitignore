@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -113,6 +114,8 @@ ENV/
 env.bak/
 venv.bak/
 majhub_env/
+Backend/staticfiles/
+FrontEnd/.vite/
 
 # Spyder project settings
 .spyderproject
