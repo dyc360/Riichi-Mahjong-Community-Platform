@@ -1,196 +1,202 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { HomePageHeader, ModuleContainer, GameInfoCard } from '../components/homePageComp';
-import { useTheme } from '../contexts/ThemeContext';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
-// 雀魂新闻数据
-export const MAJSOUL_NEWS_DETAILED = [
-  { 
+interface MajSoulNews {
+  id: number;
+  title: string;
+  description: string;
+  link: string;
+  image_url: string;
+  published_at: string;
+  category: string;
+  source: string;
+  last_updated: string;
+}
+
+// 预设的示例新闻数据 - 移到组件外部，避免重复创建
+const DEFAULT_NEWS: MajSoulNews[] = [
+  {
     id: 1,
-    title: "新活动登场：姬川响的游戏机", 
-    subtitle: "多款新皮肤登场以及老皮肤返场，完成活动任务可获得限定头像框",
-    imageUrl: "https://placehold.co/100x70/6366f1/ffffff?text=Event",
-    timestamp: "2小时前",
-    category: ["event"]
+    title: '雀魂新版本更新公告',
+    description: '全新版本带来多项改进，包括新的游戏模式和优化体验。新增了多个游戏功能，优化了游戏性能，修复了已知问题。',
+    link: 'https://mahjongsoul.yo-star.com/news/update-2024',
+    image_url: 'https://placehold.co/400x200/6366f1/ffffff?text=Update',
+    published_at: new Date().toISOString(),
+    category: '更新',
+    source: '雀魂官网',
+    last_updated: new Date().toISOString(),
   },
-  { 
+  {
     id: 2,
-    title: "版本更新公告 v2.0.1", 
-    subtitle: "修复了部分场景下的卡顿问题，优化了牌局结算速度，新增3种自定义桌布",
-    imageUrl: "https://placehold.co/100x70/10b981/ffffff?text=Update",
-    timestamp: "1天前",
-    category: ["update"]
+    title: '新年锦标赛即将开启',
+    description: '2026新年锦标赛报名通道已开放，欢迎所有玩家参与。本次锦标赛设置了丰厚的奖励，包括限定称号和特殊道具。',
+    link: 'https://mahjongsoul.yo-star.com/news/tournament-2024',
+    image_url: 'https://placehold.co/400x200/ec4899/ffffff?text=Tournament',
+    published_at: new Date().toISOString(),
+    category: '活动',
+    source: '雀魂官网',
+    last_updated: new Date().toISOString(),
   },
-  { 
+  {
     id: 3,
-    title: "夏季锦标赛报名启动", 
-    subtitle: "总奖金池100万，欢迎各路高手报名参加，预选赛将于下周六开始",
-    imageUrl: "https://placehold.co/100x70/ec4899/ffffff?text=Tourney",
-    timestamp: "2天前",
-    category: ["tournament"]
+    title: '新角色「望月凛」登场',
+    description: '来自北海道的天才少女角色正式加入雀魂大家庭。望月凛是一位充满活力的角色，拥有独特的语音和立绘。',
+    link: 'https://mahjongsoul.yo-star.com/news/character-mochizuki',
+    image_url: 'https://placehold.co/400x200/f59e0b/ffffff?text=Character',
+    published_at: new Date().toISOString(),
+    category: '角色',
+    source: '雀魂官网',
+    last_updated: new Date().toISOString(),
   },
-  { 
+  {
     id: 4,
-    title: "新角色「望月凛」上线", 
-    subtitle: "全新角色加入雀魂大家庭，自带专属语音和特殊动作",
-    imageUrl: "https://placehold.co/100x70/f59e0b/ffffff?text=Character",
-    timestamp: "3天前",
-    category: ["character"]
+    title: '游戏平衡性调整说明',
+    description: '根据玩家反馈和数据分析，我们对部分游戏机制进行了平衡性调整，以提供更好的游戏体验。',
+    link: 'https://mahjongsoul.yo-star.com/news/balance-2024',
+    image_url: 'https://placehold.co/400x200/10b981/ffffff?text=Balance',
+    published_at: new Date().toISOString(),
+    category: '更新',
+    source: '雀魂官网',
+    last_updated: new Date().toISOString(),
   },
-  { 
+  {
     id: 5,
-    title: "雀魂职业联赛S4赛季即将开幕",
-    subtitle: "16支顶尖战队将角逐年度总冠军，总奖金高达500万元",
-    imageUrl: "https://placehold.co/100x70/8b5cf6/ffffff?text=League",
-    timestamp: "1周前",
-    category: ["tournament"]
+    title: '限时活动：双倍经验周',
+    description: '本周开启双倍经验活动，所有对局获得的经验值翻倍，是提升等级的好时机！',
+    link: 'https://mahjongsoul.yo-star.com/news/double-exp',
+    image_url: 'https://placehold.co/400x200/8b5cf6/ffffff?text=Event',
+    published_at: new Date().toISOString(),
+    category: '活动',
+    source: '雀魂官网',
+    last_updated: new Date().toISOString(),
   }
 ];
 
-export default function NewsMajsoulPage() {
-  const { theme } = useTheme();
+const NewsMajsoulPage = () => {
+  // 直接使用预设数据初始化，不等待API
+  const [news] = useState<MajSoulNews[]>(DEFAULT_NEWS);
   const navigate = useNavigate();
-  // 添加分类状态管理
-  const [currentCategory, setCurrentCategory] = useState('all');
 
-  const handleGoBack = () => {
-    navigate(-1);
+  // 调试信息
+  useEffect(() => {
+    console.log('NewsMajsoulPage 加载，新闻数量:', news.length);
+    console.log('新闻数据:', news);
+  }, [news]);
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
   };
 
-  // 根据当前分类筛选新闻
-  const filteredNews = currentCategory === 'all' 
-    ? MAJSOUL_NEWS_DETAILED 
-    : MAJSOUL_NEWS_DETAILED.filter(news => news.category.includes(currentCategory));
-
-  // 分类按钮点击处理函数
-  const handleCategoryChange = (category: string) => {
-    setCurrentCategory(category);
+  const handleNewsClick = (newsItem: MajSoulNews) => {
+    navigate(`/news/majsoul/${newsItem.id}`);
   };
+
+  // 调试：显示当前数据状态
+  console.log('渲染 NewsMajsoulPage，news.length:', news.length);
 
   return (
-    <>
-      <HomePageHeader />
-      
-      {/* 导航栏 */}
-      <nav className="container mx-auto px-4 py-4 border-b border-gray-200 dark:border-slate-700">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* 返回按钮 */}
-          <button
-            onClick={handleGoBack}
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-          >
-            <svg className="inline-block w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            返回上一页
-          </button>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* 页面标题 */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            雀魂游戏资讯
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            获取最新的雀魂麻将游戏新闻和公告
+          </p>
         </div>
-      </nav>
 
-      <main className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">雀魂游戏资讯</h1>
-        <p className="text-slate-500 dark:text-slate-400 mb-8">最新游戏更新、活动与赛事信息</p>
-        
-        {/* 雀魂新闻分类导航 */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          <button 
-            className={`px-4 py-2 rounded-full text-sm ${
-              currentCategory === 'all' 
-                ? 'bg-indigo-600 text-white' 
-                : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
-            } transition-colors`}
-            onClick={() => handleCategoryChange('all')}
-          >
-            全部
-          </button>
-          <button 
-            className={`px-4 py-2 rounded-full text-sm ${
-              currentCategory === 'event' 
-                ? 'bg-indigo-600 text-white' 
-                : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
-            } transition-colors`}
-            onClick={() => handleCategoryChange('event')}
-          >
-            活动
-          </button>
-          <button 
-            className={`px-4 py-2 rounded-full text-sm ${
-              currentCategory === 'update' 
-                ? 'bg-indigo-600 text-white' 
-                : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
-            } transition-colors`}
-            onClick={() => handleCategoryChange('update')}
-          >
-            更新
-          </button>
-          <button 
-            className={`px-4 py-2 rounded-full text-sm ${
-              currentCategory === 'tournament' 
-                ? 'bg-indigo-600 text-white' 
-                : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
-            } transition-colors`}
-            onClick={() => handleCategoryChange('tournament')}
-          >
-            赛事
-          </button>
-          <button 
-            className={`px-4 py-2 rounded-full text-sm ${
-              currentCategory === 'character' 
-                ? 'bg-indigo-600 text-white' 
-                : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
-            } transition-colors`}
-            onClick={() => handleCategoryChange('character')}
-          >
-            角色
-          </button>
-        </div>
-        
-        {/* 雀魂新闻列表 */}
-        <ModuleContainer
-          title="最新动态"
-          description="雀魂游戏的最新资讯与更新内容"
-        >
-          <div className="space-y-6">
-            {filteredNews.length > 0 ? (
-              filteredNews.map((news) => (
-                <Link 
-                  key={news.id}
-                  to={`/news/majsoul/${encodeURIComponent(news.title)}`}
-                  className="block group"
-                >
-                  <div className="flex flex-col md:flex-row gap-4 p-4 rounded-xl bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
-                    <img 
-                      src={news.imageUrl} 
-                      alt={news.title} 
-                      className="w-full md:w-48 h-32 object-cover rounded-lg"
+        {/* 新闻列表 */}
+        {news && news.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {news.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => handleNewsClick(item)}
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+              >
+                {/* 新闻图片 */}
+                {item.image_url && (
+                  <div className="w-full h-48 overflow-hidden">
+                    <img
+                      src={item.image_url}
+                      alt={item.title}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
                     />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
-                          {news.category[0]}
-                        </span>
-                        <span className="text-xs text-slate-500 dark:text-slate-400">
-                          {news.timestamp}
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                        {news.title}
-                      </h3>
-                      <p className="text-slate-600 dark:text-slate-300 text-sm">
-                        {news.subtitle}
-                      </p>
-                    </div>
                   </div>
-                </Link>
-              ))
-            ) : (
-              <div className="py-10 text-center text-slate-500 dark:text-slate-400">
-                暂无该分类的新闻资讯
+                )}
+
+                {/* 新闻内容 */}
+                <div className="p-6">
+                  {/* 分类标签 */}
+                  {item.category && (
+                    <span className="inline-block px-2 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900 rounded mb-2">
+                      {item.category}
+                    </span>
+                  )}
+
+                  {/* 标题 */}
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                    {item.title}
+                  </h2>
+
+                  {/* 描述 */}
+                  {item.description && (
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-3">
+                      {item.description}
+                    </p>
+                  )}
+
+                  {/* 时间和来源 */}
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
+                    <span>{formatDate(item.published_at)}</span>
+                    <span>{item.source}</span>
+                  </div>
+
+                  {/* 外部链接提示 */}
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                    >
+                      查看原文 →
+                    </a>
+                  </div>
+                </div>
               </div>
-            )}
+            ))}
           </div>
-        </ModuleContainer>
-      </main>
-    </>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-gray-500 dark:text-gray-400 text-lg">
+              暂无新闻数据 (数据长度: {news?.length || 0})
+            </p>
+            <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
+              调试信息: DEFAULT_NEWS 长度 = {DEFAULT_NEWS.length}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   );
-}
+};
+
+export default NewsMajsoulPage;
+

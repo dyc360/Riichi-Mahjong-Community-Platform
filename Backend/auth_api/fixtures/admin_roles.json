@@ -1,0 +1,74 @@
+[
+  {
+    "model": "auth_api.adminrole",
+    "pk": 1,
+    "fields": {
+      "name": "super_admin",
+      "display_name": "超级管理员",
+      "description": "拥有系统所有权限的超级管理员",
+      "is_active": true,
+      "created_at": "2025-12-25T00:00:00Z",
+      "updated_at": "2025-12-25T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth_api.adminrole",
+    "pk": 2,
+    "fields": {
+      "name": "news_editor",
+      "display_name": "新闻编辑者",
+      "description": "负责新闻内容的编辑和管理",
+      "is_active": true,
+      "created_at": "2025-12-25T00:00:00Z",
+      "updated_at": "2025-12-25T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth_api.adminrole",
+    "pk": 3,
+    "fields": {
+      "name": "practice_editor",
+      "display_name": "练习编辑者",
+      "description": "负责练习题目的编辑和管理",
+      "is_active": true,
+      "created_at": "2025-12-25T00:00:00Z",
+      "updated_at": "2025-12-25T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth_api.adminrole",
+    "pk": 4,
+    "fields": {
+      "name": "moderator",
+      "display_name": "版主",
+      "description": "负责论坛内容的审核和管理",
+      "is_active": true,
+      "created_at": "2025-12-25T00:00:00Z",
+      "updated_at": "2025-12-25T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth_api.adminrole",
+    "pk": 5,
+    "fields": {
+      "name": "forum_moderator",
+      "display_name": "论坛版主",
+      "description": "专门负责论坛内容的审核和管理",
+      "is_active": true,
+      "created_at": "2025-12-25T00:00:00Z",
+      "updated_at": "2025-12-25T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth_api.adminrole",
+    "pk": 6,
+    "fields": {
+      "name": "content_manager",
+      "display_name": "内容管理员",
+      "description": "负责各类内容的综合管理和审核",
+      "is_active": true,
+      "created_at": "2025-12-25T00:00:00Z",
+      "updated_at": "2025-12-25T00:00:00Z"
+    }
+  }
+]

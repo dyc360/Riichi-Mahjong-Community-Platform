@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { useAuth } from './contexts/AuthContext';
 import LoginPage from "./pages/LoginPage"
 import SignUpPage from "./pages/SignUpPage"
 import LoginPage_Admin from "./pages/LoginPage_Admin"
@@ -23,12 +24,32 @@ import EfficiencyCalculationPage from "./pages/EfficiencyCalculationPage.tsx"
 import NewsDetailPage from "./pages/NewsDetailPage.tsx"
 import ForumPostDetailPage from "./pages/ForumPostDetailPage.tsx"
 import CreatePostPage from "./pages/CreatePostPage.tsx"
+import EditPostPage from "./pages/EditPostPage.tsx"
 import ForumSectionPage from "./pages/ForumSectionPage.tsx"
 import ForumHotPage from "./pages/ForumHotPage.tsx"
 import ForumLatestPage from "./pages/ForumLatestPage.tsx"
 import ForumTopicPage from "./pages/ForumTopicPage.tsx"
+import NotificationPage from "./pages/NotificationPage.tsx"
+import ChinitsuCalculationPage from "./pages/ChinitsuCalculation.tsx"
+import Naze300Page from "./pages/Naze300Page.tsx"
+import Naze300QuestionPage from "./pages/Naze300QuestionPage.tsx"
+import Naze300AdminPage from "./pages/Naze300AdminPage.tsx"
 // import HomePage from "./pages/HomePage"
 // import ProfilePage from "./pages/ProfilePage"
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+	const { user, isLoading } = useAuth();
+
+	if (isLoading) {
+		return <div>加载中...</div>;
+	}
+
+	if (!user || !user.is_staff) {
+		return <Navigate to="/home" replace />;
+	}
+
+	return <>{children}</>;
+}
 
 function App() {
 	return (
@@ -51,14 +72,20 @@ function App() {
 				<Route path="/forum" element={<ForumPage />} />
 				<Route path="/forum/post/:title" element={<ForumPostDetailPage />} />
 				<Route path="/forum/create-post" element={<CreatePostPage />} />
+				<Route path="/forum/edit-post/:title" element={<EditPostPage />} />
 				<Route path="/forum/section/:sectionname" element={<ForumSectionPage />} />
 				<Route path="/forum/hot" element={<ForumHotPage />} />
 				<Route path="/forum/latest" element={<ForumLatestPage />} />
 				<Route path="/forum/topic/:topic" element={<ForumTopicPage />} />
+				<Route path="/notifications" element={<NotificationPage />} />
 				{/* 何切练习 */}
 				<Route path="/practice" element={<PracticePage />} />
 				<Route path="/practice/point-calculation" element={<PointCalculationPage />} />
 				<Route path="/practice/efficiency-calculation" element={<EfficiencyCalculationPage />} />
+				<Route path="/practice/chinitsu-calculation" element={<ChinitsuCalculationPage />} />
+				<Route path="/practice/naze300" element={<Naze300Page />} />
+				<Route path="/practice/naze300/:id" element={<Naze300QuestionPage />} />
+				<Route path="/practice/naze300/admin" element={<AdminRoute><Naze300AdminPage /></AdminRoute>} />
 				{/* 个人中心 */}
 				<Route path="/profile" element={<ProfilePage />} />
 				{/* 行业资讯 */}
@@ -79,7 +106,7 @@ function App() {
 				{/* 雀魂游戏信息 */}
 				<Route path="/news/majsoul" element={<NewsMajsoulPage />} />
 				{/* 雀魂游戏信息详情 */}
-				<Route path="/news/majsoul/:title" element={<NewsMajsoulDetailPage />} />
+				<Route path="/news/majsoul/:id" element={<NewsMajsoulDetailPage />} />
 			</Routes>
 		</BrowserRouter>
 	)

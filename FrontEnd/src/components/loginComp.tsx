@@ -13,6 +13,8 @@ export type PasswordFieldProps = {
   onToggleReveal: () => void
   autoComplete?: string
   suffixText?: string
+  error?: string
+  hasError?: boolean
 }
 
 // Reusable password input with show/hide affordance and shared styling.
@@ -26,6 +28,8 @@ export function PasswordField({
   onToggleReveal,
   autoComplete,
   suffixText,
+  error,
+  hasError,
 }: PasswordFieldProps) {
   const resolvedSuffix = suffixText ?? 'Safe'
 
@@ -51,13 +55,22 @@ export function PasswordField({
           autoComplete={autoComplete}
           value={value}
           onChange={onChange}
-          className="auth-input w-full rounded-xl border px-4 py-3 text-sm placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
+          className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 ${
+            hasError
+              ? 'border-red-500 bg-red-50 dark:bg-red-950/20 focus:border-red-500 focus:ring-red-500/50'
+              : 'border-gray-300 dark:border-slate-600 focus:border-indigo-400 focus:ring-indigo-400/50'
+          }`}
           placeholder={placeholder}
         />
         <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-xs uppercase tracking-widest text-slate-500">
           {resolvedSuffix}
         </div>
       </div>
+      {error && (
+        <div className="text-sm text-red-600 dark:text-red-400">
+          {error}
+        </div>
+      )}
     </div>
   )
 }
@@ -102,7 +115,7 @@ export function HeroSection({
       <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
         {welcomeMessage}
       </h1>
-      <p className="text-sm secondary">
+      <p className="text-sm text-slate-600 dark:text-slate-400">
         {suggestionText}
       </p>
     </div>

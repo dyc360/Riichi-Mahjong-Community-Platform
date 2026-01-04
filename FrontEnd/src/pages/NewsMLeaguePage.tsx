@@ -1,10 +1,11 @@
-import { Fragment, useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Fragment, useState, useEffect, useMemo, useCallback } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { HomePageHeader, ModuleContainer } from '../components/homePageComp';
 import { useMLeague } from '../contexts/MLeagueContext';
 
 export default function MLeaguePage() {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const {
 		rankings,
 		playerStats,
@@ -15,21 +16,142 @@ export default function MLeaguePage() {
 		schedule,
 		scheduleLoading,
 		fetchSchedule,
-		getRecentMatches,
-		getUpcomingMatches
+		clearSchedule
 	} = useMLeague();
 	const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
+	const [hasCheckedData, setHasCheckedData] = useState(false); // 跟踪是否已经检查过数据
+	
+	// 判断是否应该显示 loading 状态
+	const shouldShowLoading = useMemo(() => {
+		// 如果正在加载，显示 loading
+		if (scheduleLoading) return true;
+		// 如果还没有检查过数据，且 schedule 为空，显示 loading（首次加载）
+		if (!hasCheckedData && schedule.length === 0) return true;
+		// 否则不显示 loading
+		return false;
+	}, [scheduleLoading, schedule.length, hasCheckedData]);
 
-	// 在数据未加载时获取当前月份的比赛数据
+	// 获取当前赛季的年份范围
+	const getCurrentSeasonRange = useMemo(() => {
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = now.getMonth() + 1;
+		// M-League赛季从9月开始，到次年5月结束
+		const seasonStartYear = month >= 9 ? year : year - 1;
+		const seasonEndYear = seasonStartYear + 1;
+		return { startYear: seasonStartYear, endYear: seasonEndYear };
+	}, []);
+
+	// 检查比赛是否属于当前赛季
+	const isCurrentSeasonMatch = useCallback((match: any) => {
+		const { startYear, endYear } = getCurrentSeasonRange;
+		const matchYear = match.year;
+		const matchMonth = match.month;
+		
+		// 当前赛季：startYear的9-12月 或 endYear的1-5月
+		return (matchYear === startYear && matchMonth >= 9 && matchMonth <= 12) ||
+			   (matchYear === endYear && matchMonth >= 1 && matchMonth <= 5);
+	}, [getCurrentSeasonRange]);
+
+	// 在组件挂载或页面访问时，检查并确保有当前赛季的数据
 	useEffect(() => {
-		if (schedule.length === 0 && !scheduleLoading) {
+		// 路径变化时，重置检查状态
+		setHasCheckedData(false);
+		
+		const checkAndLoadCurrentSeasonData = async () => {
+			// 如果正在加载，等待完成后再检查
+			if (scheduleLoading) {
+				return;
+			}
+
 			const now = new Date();
-			const currentYear = now.getFullYear();
 			const currentMonth = now.getMonth() + 1;
-			// 使用缓存
-			fetchSchedule(currentYear, currentMonth, true);
-		}
-	}, [schedule.length, scheduleLoading, fetchSchedule]);
+			const { startYear, endYear } = getCurrentSeasonRange;
+
+			// 检查是否已有当前赛季的数据
+			const hasCurrentSeasonData = schedule.some(match => {
+				const matchYear = match.year;
+				const matchMonth = match.month;
+				return (matchYear === startYear && matchMonth >= 9 && matchMonth <= 12) ||
+					   (matchYear === endYear && matchMonth >= 1 && matchMonth <= 5);
+			});
+
+			// 检查 schedule 中是否包含非当前赛季的数据
+			const hasNonCurrentSeasonData = schedule.some(match => {
+				const matchYear = match.year;
+				const matchMonth = match.month;
+				const isCurrentSeason = 
+					(matchYear === startYear && matchMonth >= 9 && matchMonth <= 12) ||
+					(matchYear === endYear && matchMonth >= 1 && matchMonth <= 5);
+				return !isCurrentSeason;
+			});
+
+			// 如果没有当前赛季的数据，或者有非当前赛季的数据，则需要加载
+			const needsLoad = !hasCurrentSeasonData || hasNonCurrentSeasonData;
+
+			if (needsLoad) {
+				// 如果包含非当前赛季的数据，先清除（并重置检查状态，确保显示 loading）
+				if (hasNonCurrentSeasonData) {
+					clearSchedule();
+					setHasCheckedData(false); // 重置检查状态，确保显示 loading
+				}
+
+				// 优先加载过去月份（包含已完成比赛），然后加载未来月份
+				// 这样"最近比赛"能更快显示
+				const pastPromises: Promise<void>[] = [];
+				const futurePromises: Promise<void>[] = [];
+
+				// 根据当前月份决定加载哪些月份的数据
+				if (currentMonth >= 9) {
+					// 当前在赛季前半段（9-12月）
+					// 优先加载：过去月份（已完成比赛）
+					for (let month = 9; month <= currentMonth; month++) {
+						pastPromises.push(fetchSchedule(startYear, month, true, true));
+					}
+					// 然后加载：未来月份（即将到来的比赛）
+					for (let month = 1; month <= 5; month++) {
+						futurePromises.push(fetchSchedule(endYear, month, true, true));
+					}
+				} else {
+					// 当前在赛季后半段（1-5月）
+					// 优先加载：上一年的9-12月（已完成比赛）
+					for (let month = 9; month <= 12; month++) {
+						pastPromises.push(fetchSchedule(startYear, month, true, true));
+					}
+					// 然后加载：当前年的1月到当前月份（可能包含已完成和即将到来的比赛）
+					for (let month = 1; month <= currentMonth; month++) {
+						pastPromises.push(fetchSchedule(endYear, month, true, true));
+					}
+					// 最后加载：当前年剩余月份（未来比赛）
+					for (let month = currentMonth + 1; month <= 5; month++) {
+						futurePromises.push(fetchSchedule(endYear, month, true, true));
+					}
+				}
+
+				try {
+					// 先并行加载过去月份的数据（包含已完成比赛）
+					await Promise.all(pastPromises);
+					// 然后并行加载未来月份的数据（包含即将到来的比赛）
+					await Promise.all(futurePromises);
+					// 等待一小段时间，确保所有状态更新完成
+					await new Promise(resolve => setTimeout(resolve, 100));
+				} catch (error) {
+					console.error('加载赛程数据失败:', error);
+				} finally {
+					// 标记已经检查过数据（无论成功或失败）
+					setHasCheckedData(true);
+				}
+			} else {
+				// 如果已有数据（可能是 Context 预加载的），直接标记为已检查
+				setHasCheckedData(true);
+			}
+		};
+
+		// 每次页面访问时都检查数据
+		// 如果 Context 已经预加载了数据，这里会快速完成
+		checkAndLoadCurrentSeasonData();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [location.pathname]); // 当路径变化时执行
 
 	const handleGoBack = () => {
 		navigate(-1);
@@ -74,35 +196,71 @@ export default function MLeaguePage() {
 	// 获取当前赛季
 	const currentSeason = rankings.length > 0 ? rankings[0].season : '';
 
-	// 获取最近完成的比赛
+	// 获取最近完成的比赛（只显示当前赛季）
 	const recentMatches = useMemo(() => {
 		const matches = schedule
-			.filter(match => match.status === 'finished' && match.result)
+			.filter(match => {
+				// 过滤条件：当前赛季 + 已完成 + 有结果 + 有效数据
+				if (!isCurrentSeasonMatch(match)) return false;
+				if (match.status !== 'finished') return false;
+				if (!match.result) return false;
+				
+				// 确保有有效的队伍信息
+				if (!match.teams || match.teams.length === 0) return false;
+				if (!match.teams.some((team: { name: string }) => team.name && team.name.trim() !== '')) return false;
+				
+				return true;
+			})
 			.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 			.slice(0, 5);
-		return matches.map((match, idx) => ({
-			id: match.match_id || `match-${idx}`,
-			date: match.date,
-			day_week: match.day_week,
-			match: match
-		}));
-	}, [schedule]);
+		return matches.map((match, idx) => {
+			// 在 useMemo 中预先过滤掉名称为空的队伍，避免在渲染时重复计算
+			const validTeams = match.teams.filter((team: { name: string }) => team.name && team.name.trim() !== '');
+			const teamsParam = validTeams.map((t: { name: string }) => t.name).join('|');
+			const matchPath = `/matches/${match.date}/${encodeURIComponent(teamsParam)}`;
+			
+			return {
+				id: match.match_id || `match-${idx}`,
+				date: match.date,
+				day_week: match.day_week,
+				match: match,
+				validTeams: validTeams,
+				matchPath: matchPath
+			};
+		});
+	}, [schedule, isCurrentSeasonMatch]);
 
-	// 获取即将到来的比赛
+	// 获取即将到来的比赛（只显示当前赛季）
 	const upcomingMatches = useMemo(() => {
 		const matches = schedule
-			.filter(match => match.status === 'upcoming')
+			.filter(match => {
+				// 过滤条件：当前赛季 + 即将开始 + 有效数据
+				if (!isCurrentSeasonMatch(match)) return false;
+				if (match.status !== 'upcoming') return false;
+				
+				// 确保有有效的队伍信息
+				if (!match.teams || match.teams.length === 0) return false;
+				if (!match.teams.some((team: { name: string }) => team.name && team.name.trim() !== '')) return false;
+				
+				return true;
+			})
 			.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 			.slice(0, 4);
-		return matches.map((match, idx) => ({
-			id: match.match_id || `upcoming-${idx}`,
-			date: match.date,
-			day_week: match.day_week,
-			teamA: match.teams[0]?.name || '',
-			teamB: match.teams[1]?.name || '',
-			match: match
-		}));
-	}, [schedule]);
+		return matches.map((match, idx) => {
+			// 在 useMemo 中预先过滤掉名称为空的队伍，避免在渲染时重复计算
+			const validTeams = match.teams.filter((team: { name: string }) => team.name && team.name.trim() !== '');
+			
+			return {
+				id: match.match_id || `upcoming-${idx}`,
+				date: match.date,
+				day_week: match.day_week,
+				teamA: match.teams[0]?.name || '',
+				teamB: match.teams[1]?.name || '',
+				match: match,
+				validTeams: validTeams
+			};
+		});
+	}, [schedule, isCurrentSeasonMatch]);
 
 	return (
 		<>
@@ -274,7 +432,7 @@ export default function MLeaguePage() {
 					description="最近结束的5场比赛"
 					className="mb-8"
 				>
-					{scheduleLoading ? (
+					{shouldShowLoading || (!hasCheckedData && recentMatches.length === 0) ? (
 						<div className="flex justify-center items-center h-32">
 							<div className="text-slate-600 dark:text-slate-400">加载中...</div>
 						</div>
@@ -285,9 +443,8 @@ export default function MLeaguePage() {
 					) : (
 						<div className="space-y-3">
 							{recentMatches.map(match => {
-								// 构建队伍名称字符串用于URL（使用 | 分隔符，避免队伍名称中包含 - 时出错）
-								const teamsParam = match.match.teams.map(t => t.name).join('|');
-								const matchPath = `/matches/${match.date}/${encodeURIComponent(teamsParam)}`;
+								// 直接使用 useMemo 中已经计算好的数据，避免重复过滤和计算
+								const { validTeams, matchPath } = match;
 
 								return (
 									<div key={match.id} className="flex flex-wrap items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-100 dark:border-slate-700">
@@ -295,8 +452,8 @@ export default function MLeaguePage() {
 											{formatDate(match.date)}
 										</div>
 										<div className="flex items-center justify-center flex-1 flex-wrap gap-2">
-											{match.match.teams.map((team, idx) => (
-												<div key={idx} className="flex items-center">
+											{validTeams.map((team: { name: string; logo?: string }, idx: number) => (
+												<div key={`${match.id}-team-${idx}-${team.name}`} className="flex items-center">
 													{team.logo && (
 														<img
 															src={team.logo}
@@ -310,7 +467,7 @@ export default function MLeaguePage() {
 													<p className="text-sm font-medium text-slate-900 dark:text-white">
 														{team.name}
 													</p>
-													{idx < match.match.teams.length - 1 && (
+													{idx < validTeams.length - 1 && (
 														<span className="mx-3 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded text-sm font-medium text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
 															VS
 														</span>
@@ -338,7 +495,7 @@ export default function MLeaguePage() {
 					title="即将到来的比赛"
 					description="未来4场赛程安排"
 				>
-					{scheduleLoading ? (
+					{shouldShowLoading ? (
 						<div className="flex justify-center items-center h-32">
 							<div className="text-slate-600 dark:text-slate-400">加载中...</div>
 						</div>
@@ -348,37 +505,42 @@ export default function MLeaguePage() {
 						</div>
 					) : (
 						<div className="space-y-3">
-							{upcomingMatches.map(match => (
-								<div key={match.id} className="flex flex-wrap items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-100 dark:border-slate-700">
-									<div className="text-sm text-slate-500 dark:text-slate-400 w-full sm:w-auto mb-2 sm:mb-0">
-										{formatDate(match.date)}
+							{upcomingMatches.map(match => {
+								// 直接使用 useMemo 中已经计算好的数据，避免重复过滤和计算
+								const { validTeams } = match;
+								
+								return (
+									<div key={match.id} className="flex flex-wrap items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-100 dark:border-slate-700">
+										<div className="text-sm text-slate-500 dark:text-slate-400 w-full sm:w-auto mb-2 sm:mb-0">
+											{formatDate(match.date)}
+										</div>
+										<div className="flex items-center justify-center flex-1">
+											{validTeams.map((team: { name: string; logo?: string }, idx: number) => (
+												<div key={`${match.id}-team-${idx}-${team.name}`} className="flex items-center">
+													{team.logo && (
+														<img
+															src={team.logo}
+															alt={team.name}
+															className="w-6 h-6 mr-2 object-contain"
+															onError={(e) => {
+																(e.target as HTMLImageElement).style.display = 'none';
+															}}
+														/>
+													)}
+													<p className="text-sm font-medium text-slate-900 dark:text-white">
+														{team.name}
+													</p>
+													{idx < validTeams.length - 1 && (
+														<span className="mx-3 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded text-sm font-medium text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
+															VS
+														</span>
+													)}
+												</div>
+											))}
+										</div>
 									</div>
-									<div className="flex items-center justify-center flex-1">
-										{match.match.teams.map((team, idx) => (
-											<div key={idx} className="flex items-center">
-												{team.logo && (
-													<img
-														src={team.logo}
-														alt={team.name}
-														className="w-6 h-6 mr-2 object-contain"
-														onError={(e) => {
-															(e.target as HTMLImageElement).style.display = 'none';
-														}}
-													/>
-												)}
-												<p className="text-sm font-medium text-slate-900 dark:text-white">
-													{team.name}
-												</p>
-												{idx < match.match.teams.length - 1 && (
-													<span className="mx-3 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded text-sm font-medium text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
-														VS
-													</span>
-												)}
-											</div>
-										))}
-									</div>
-								</div>
-							))}
+								);
+							})}
 						</div>
 					)}
 				</ModuleContainer>

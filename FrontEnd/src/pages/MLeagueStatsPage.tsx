@@ -34,12 +34,12 @@ export default function MLeagueStatsPage() {
 
 	// 预处理表格数据
 	const processedTableData = useMemo(() => {
-		if (!pointsData || !pointsData[activePointsTable]) {
+		if (!pointsData || !pointsData[activePointsTable] || !Array.isArray(pointsData[activePointsTable])) {
 			return { columns: [], rows: [] };
 		}
 
 		const tableData = pointsData[activePointsTable];
-		if (tableData.length === 0) {
+		if (tableData.length === 0 || !tableData[0]) {
 			return { columns: [], rows: [] };
 		}
 
@@ -103,21 +103,21 @@ export default function MLeagueStatsPage() {
 		matches: { label: '试合数', unit: '', format: 'number' },
 		total_games: { label: '总局数', unit: '', format: 'number' },
 		points: { label: '积分', unit: '', format: 'number' },
-		average_rank: { label: '平着', unit: '', format: 'number' },
+		average_rank: { label: '平顺', unit: '', format: 'number' },
 		first_place: { label: '1位', unit: '', format: 'number' },
 		second_place: { label: '2位', unit: '', format: 'number' },
 		third_place: { label: '3位', unit: '', format: 'number' },
 		fourth_place: { label: '4位', unit: '', format: 'number' },
-		top_rate: { label: '第一率', unit: '%', format: 'percentage' },
+		top_rate: { label: '一位率', unit: '%', format: 'percentage' },
 		renchan_rate: { label: '连庄率', unit: '%', format: 'percentage' },
-		last_avoidance_rate: { label: '拉四回避率', unit: '%', format: 'percentage' },
-		best_score: { label: '最佳得分', unit: '', format: 'number' },
+		last_avoidance_rate: { label: '避四率', unit: '%', format: 'percentage' },
+		best_score: { label: '最高打点', unit: '', format: 'number' },
 		average_score: { label: '平均打点', unit: '', format: 'score' },
 		furo_rate: { label: '副露率', unit: '%', format: 'percentage' },
 		riichi_rate: { label: '立直率', unit: '%', format: 'percentage' },
 		agari_rate: { label: '和牌率', unit: '%', format: 'percentage' },
 		houjuu_rate: { label: '放铳率', unit: '%', format: 'percentage' },
-		houjuu_average_score: { label: '放铳平均得分', unit: '', format: 'score' }
+		houjuu_average_score: { label: '平均铳点', unit: '', format: 'score' }
 	};
 
 	// 从选手数据生成排行榜
@@ -394,7 +394,7 @@ export default function MLeagueStatsPage() {
 													onClick={() => navigate(`/players/${player.player_name}`)}
 												>
 													<td className="py-3 px-4 text-sm font-medium">
-														<span className="inline-block w-6 h-6 rounded-full flex items-center justify-center text-white text-xs mr-1"
+														<span className="inline-block w-6 h-6 rounded-full flex items-center justify-center text-black text-xs mr-1"
 															style={{
 																backgroundColor: player.rank <= 3 ? (
 																	player.rank === 1 ? '#f59e0b' :

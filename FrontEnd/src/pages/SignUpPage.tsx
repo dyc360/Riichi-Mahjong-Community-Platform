@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
 import { type ChangeEvent, type FormEvent, useMemo, useState } from 'react'
 import {PasswordField, HeroSection, BrandHeader, BackgroundGlow, Prompt, PolicyFooter} from '../components/loginComp'
+import { getCsrfToken } from '../utils';
+
+const API_BASE_URL = '/api';
 
 // Shared shape for the sign-up form data fields.
 type FormState = {
@@ -16,6 +19,8 @@ type UseSignUpFormResult = {
 	showPassword: boolean
 	showPasswordConfirm: boolean
 	passwordsMatch: boolean
+	errorMessage: string | null
+	fieldErrors: Record<string, string[]>
 	handleSubmit: (event: FormEvent<HTMLFormElement>) => void
 	handleEmailChange: (event: ChangeEvent<HTMLInputElement>) => void
 	handleUsernameChange: (event: ChangeEvent<HTMLInputElement>) => void
@@ -23,6 +28,7 @@ type UseSignUpFormResult = {
 	handlePasswordConfirmChange: (event: ChangeEvent<HTMLInputElement>) => void
 	togglePasswordVisibility: () => void
 	togglePasswordConfirmVisibility: () => void
+	clearErrors: () => void
 }
 
 type SocialProvider = {
@@ -47,26 +53,32 @@ function useSignUpForm(): UseSignUpFormResult {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     // 检查密码是否匹配
     if (form.password !== form.passwordConfirm) {
-      alert('两次输入的密码不一致')
+      setErrorMessage('两次输入的密码不一致')
       return
     }
 
     setIsSubmitting(true)
+    setErrorMessage(null)
+    setFieldErrors({})
 
     try {
       console.log('开始注册请求...', form);
 
-      const response = await fetch('http://localhost:8000/api/auth/register/', {
+      const response = await fetch(`${API_BASE_URL}/auth/register/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken() || '',
         },
+        credentials: 'include',
         body: JSON.stringify({
           username: form.username,
           email: form.email,
@@ -84,15 +96,33 @@ function useSignUpForm(): UseSignUpFormResult {
       if (!response.ok) {
         // 尝试解析错误信息
         let errorMessage = '注册失败';
+        let parsedErrors: Record<string, string[]> = {};
+
         if (responseText) {
           try {
             const errorData = JSON.parse(responseText);
-            errorMessage = errorData.message || errorData.errors || errorMessage;
-          } catch (e) {
-            errorMessage = responseText;
+            console.log('解析的错误数据:', errorData);
+
+            // 处理后端返回的错误格式
+            if (errorData.errors) {
+              // 字段级错误
+              parsedErrors = errorData.errors;
+              // 从字段错误中提取主要错误消息
+              const errorMessages = Object.values(errorData.errors).flat() as string[];
+              errorMessage = errorMessages[0] || errorData.message || '注册失败';
+            } else if (errorData.message) {
+              // 通用错误消息
+              errorMessage = errorData.message;
+            }
+          } catch (parseError) {
+            console.error('解析错误响应失败:', parseError);
+            errorMessage = responseText || '注册失败';
           }
         }
-        throw new Error(errorMessage);
+
+        setErrorMessage(errorMessage);
+        setFieldErrors(parsedErrors);
+        return;
       }
 
       // 解析成功响应
@@ -104,31 +134,68 @@ function useSignUpForm(): UseSignUpFormResult {
         // 跳转到登录页面
         window.location.href = '/login';
       } else {
-        throw new Error(data.message || '注册失败');
+        setErrorMessage(data.message || '注册失败');
       }
     } catch (err) {
       console.error('注册错误:', err);
-      alert(err instanceof Error ? err.message : '注册失败，请重试');
+      setErrorMessage(err instanceof Error ? err.message : '网络错误，请检查网络连接');
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  const clearErrors = () => {
+    setErrorMessage(null);
+    setFieldErrors({});
+  }
+
   // ... 其他函数保持不变
   const handleEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, email: event.target.value }))
+    // 清除相关字段错误
+    if (fieldErrors.email) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.email;
+        return newErrors;
+      });
+    }
   }
 
   const handleUsernameChange = (event: ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, username: event.target.value }))
+    // 清除相关字段错误
+    if (fieldErrors.username) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.username;
+        return newErrors;
+      });
+    }
   }
 
   const handlePasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, password: event.target.value }))
+    // 清除密码字段错误
+    if (fieldErrors.password) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.password;
+        return newErrors;
+      });
+    }
   }
 
   const handlePasswordConfirmChange = (event: ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, passwordConfirm: event.target.value }))
+    // 清除密码确认字段错误
+    if (fieldErrors.password_confirm) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.password_confirm;
+        return newErrors;
+      });
+    }
   }
 
   const togglePasswordVisibility = () => {
@@ -153,6 +220,8 @@ function useSignUpForm(): UseSignUpFormResult {
     showPassword,
     showPasswordConfirm,
     passwordsMatch,
+    errorMessage,
+    fieldErrors,
     handleSubmit,
     handleEmailChange,
     handleUsernameChange,
@@ -160,6 +229,7 @@ function useSignUpForm(): UseSignUpFormResult {
     handlePasswordConfirmChange,
     togglePasswordVisibility,
     togglePasswordConfirmVisibility,
+    clearErrors,
   }
 }
 type SignUpFormProps = {
@@ -168,6 +238,8 @@ type SignUpFormProps = {
 	showPassword: boolean
 	showPasswordConfirm: boolean
 	passwordsMatch: boolean
+	errorMessage: string | null
+	fieldErrors: Record<string, string[]>
 	onSubmit: (event: FormEvent<HTMLFormElement>) => void
 	onEmailChange: (event: ChangeEvent<HTMLInputElement>) => void
 	onUsernameChange: (event: ChangeEvent<HTMLInputElement>) => void
@@ -184,6 +256,8 @@ function SignUpForm({
 	showPassword,
 	showPasswordConfirm,
 	passwordsMatch,
+	errorMessage,
+	fieldErrors,
 	onSubmit,
 	onEmailChange,
 	onUsernameChange,
@@ -198,6 +272,24 @@ function SignUpForm({
 	return (
 		<div className="rounded-3xl border border-slate-800/60 bg-slate-900/70 p-8 shadow-glow backdrop-blur">
 			<form className="space-y-6" onSubmit={onSubmit}>
+				{/* 全局错误消息 */}
+				{errorMessage && (
+					<div className="rounded-lg border border-red-400/70 bg-red-100 p-4 dark:border-red-800/80 dark:bg-red-900/20">
+						<div className="flex">
+							<div className="flex-shrink-0">
+								<svg className="h-5 w-5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
+									<path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+								</svg>
+							</div>
+							<div className="ml-3">
+								<p className="text-sm text-red-700 dark:text-red-200">
+									{errorMessage}
+								</p>
+							</div>
+						</div>
+					</div>
+				)}
+
 				<div className="space-y-2">
 					<label className="text-sm font-medium dark:text-slate-200 light:text-slate-700" htmlFor="username">
 						用户名
@@ -209,9 +301,18 @@ function SignUpForm({
 						autoComplete="username"
 						value={form.username}
 						onChange={onUsernameChange}
-						className="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
+						className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 ${
+							fieldErrors.username
+								? 'border-red-500 bg-red-50 dark:bg-red-950/20 focus:border-red-500 focus:ring-red-500/50'
+								: 'border-gray-300 dark:border-slate-600 focus:border-indigo-400 focus:ring-indigo-400/50'
+						}`}
 						placeholder="给自己起一个独特的昵称"
 					/>
+					{fieldErrors.username && (
+						<div className="text-sm text-red-400">
+							{fieldErrors.username[0]}
+						</div>
+					)}
 				</div>
 
 				<div className="space-y-2">
@@ -225,9 +326,18 @@ function SignUpForm({
 						autoComplete="email"
 						value={form.email}
 						onChange={onEmailChange}
-						className="w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
-						placeholder="you@example.com"
+						className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 ${
+							fieldErrors.email
+								? 'border-red-500 bg-red-50 dark:bg-red-950/20 focus:border-red-500 focus:ring-red-500/50'
+								: 'border-gray-300 dark:border-slate-600 focus:border-indigo-400 focus:ring-indigo-400/50'
+						}`}
+						placeholder="输入你的邮箱地址"
 					/>
+					{fieldErrors.email && (
+						<div className="text-sm text-red-400">
+							{fieldErrors.email[0]}
+						</div>
+					)}
 				</div>
 
 				<PasswordField
@@ -240,6 +350,8 @@ function SignUpForm({
 					onToggleReveal={onTogglePasswordVisibility}
 					autoComplete="new-password"
 					suffixText="Secure"
+					error={fieldErrors.password?.[0]}
+					hasError={!!fieldErrors.password}
 				/>
 
 				<PasswordField
@@ -252,6 +364,8 @@ function SignUpForm({
 					onToggleReveal={onTogglePasswordConfirmVisibility}
 					autoComplete="new-password"
 					suffixText={passwordsMatch ? 'Match' : 'Check'}
+					error={fieldErrors.password_confirm?.[0]}
+					hasError={!!fieldErrors.password_confirm}
 				/>
 
 				{showPasswordMismatch && (
@@ -266,37 +380,9 @@ function SignUpForm({
 					{isSubmitting ? '注册中…' : '创建账户'}
 				</button>
 			</form>
-
-			<SocialLogin />
 		</div>
 	)
 }
-
-// Displays placeholder single-sign-on options using a data-driven layout.
-function SocialLogin() {
-	return (
-		<div className="mt-8 space-y-4">
-			<div className="flex items-center gap-3 text-xs text-slate-500">
-				<span className="h-px flex-1 bg-slate-700" />
-				或者使用以下方式注册
-				<span className="h-px flex-1 bg-slate-700" />
-			</div>
-			<div className="grid grid-cols-3 gap-3 text-xs font-medium text-slate-300">
-				{SOCIAL_PROVIDERS.map((provider) => (
-					<button
-						key={provider.id}
-						type="button"
-						className="flex items-center justify-center gap-2 rounded-xl border border-slate-700/70 bg-slate-950/70 px-3 py-2 transition hover:border-indigo-400/60 hover:text-white"
-					>
-						{provider.label}
-					</button>
-				))}
-			</div>
-		</div>
-	)
-}
-
-
 
 // Pulls everything together so layout, logic, and decoration stay focused.
 function SignUpPage() {
@@ -306,6 +392,8 @@ function SignUpPage() {
 		showPassword,
 		showPasswordConfirm,
 		passwordsMatch,
+		errorMessage,
+		fieldErrors,
 		handleSubmit,
 		handleEmailChange,
 		handleUsernameChange,
@@ -334,6 +422,8 @@ function SignUpPage() {
 						showPassword={showPassword}
 						showPasswordConfirm={showPasswordConfirm}
 						passwordsMatch={passwordsMatch}
+						errorMessage={errorMessage}
+						fieldErrors={fieldErrors}
 						onSubmit={handleSubmit}
 						onEmailChange={handleEmailChange}
 						onUsernameChange={handleUsernameChange}

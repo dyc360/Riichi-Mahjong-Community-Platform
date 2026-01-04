@@ -4,7 +4,15 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .serializers import UserRegistrationSerializer, UserLoginSerializer, UserProfileSerializer
+from django.utils.decorators import method_decorator
+from django.contrib.auth import login
+from django.core.cache import cache
+from .serializers import (
+    UserRegistrationSerializer,
+    UserLoginSerializer,
+    UserProfileSerializer,
+    UserUpdateSerializer,
+)
 from .utils import JWTManager
 from .models import CustomUser
 
@@ -37,6 +45,7 @@ class HealthCheckView(APIView):
         })
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -73,25 +82,22 @@ class RegisterView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        print("=== 收到登录请求 ===")
-        print("请求数据:", request.data)
-
         try:
             serializer = UserLoginSerializer(data=request.data)
-            print("序列化器创建完成")
 
             if serializer.is_valid():
-                print("序列化验证通过")
                 user = serializer.validated_data['user']
-                print(f"用户认证成功: {user.username}")
+
+                # 登录用户，设置session
+                login(request, user)
 
                 # 生成 JWT token
                 token = JWTManager.generate_token(user)
-                print("Token 生成成功")
 
                 return Response({
                     'success': True,
@@ -100,11 +106,11 @@ class LoginView(APIView):
                     'user': {
                         'id': user.id,
                         'username': user.username,
-                        'email': user.email
+                        'email': user.email,
+                        'is_staff': user.is_staff
                     }
                 }, status=status.HTTP_200_OK)
             else:
-                print("序列化验证失败:", serializer.errors)
                 return Response({
                     'success': False,
                     'message': '登录失败',
@@ -112,10 +118,6 @@ class LoginView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            print("登录过程异常:", str(e))
-            import traceback
-            print("详细错误:", traceback.format_exc())
-
             return Response({
                 'success': False,
                 'message': '登录过程中服务器错误',
@@ -123,22 +125,62 @@ class LoginView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         try:
             user = request.user
+            cache_key = f"auth_profile_payload:{user.id}"
+            cached_payload = cache.get(cache_key)
+            if cached_payload is not None:
+                return Response({
+                    'success': True,
+                    'user': cached_payload
+                }, status=status.HTTP_200_OK)
+
             serializer = UserProfileSerializer(user)
+            payload = serializer.data
+            cache.set(cache_key, payload, timeout=60)
 
             return Response({
                 'success': True,
-                'user': serializer.data
+                'user': payload
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({
                 'success': False,
                 'message': '获取用户信息失败',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def put(self, request):
+        try:
+            user = request.user
+            serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                serializer.save()
+                user.refresh_from_db()
+                cache_key = f"auth_profile_payload:{user.id}"
+                cache.delete(cache_key)
+                refreshed = UserProfileSerializer(user)
+                cache.set(cache_key, refreshed.data, timeout=60)
+                return Response({
+                    'success': True,
+                    'user': refreshed.data
+                }, status=status.HTTP_200_OK)
+
+            return Response({
+                'success': False,
+                'message': '更新失败',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': '更新用户信息失败',
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

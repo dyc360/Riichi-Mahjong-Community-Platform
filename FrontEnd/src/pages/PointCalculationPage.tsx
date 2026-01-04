@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import { HomePageHeader } from '../components/homePageComp'
 import { useAuth } from '../contexts/AuthContext'
 
-// Base URL for the image API
-const imageUrlBase = 'http://localhost:8000/api/mahjong/images/'
+// Base URL for the image API - use absolute URL to work with both nginx proxy and direct access
+const imageUrlBase = window.location.protocol + '//' + window.location.hostname + '/api/mahjong/images/'
 
 export default function PointCalculationPage() {
 	const { token } = useAuth()
@@ -41,7 +41,7 @@ export default function PointCalculationPage() {
 				headers['Authorization'] = `Bearer ${token}`
 			}
 
-			const response = await fetch('/api/mahjong/points/', {
+			const response = await fetch(`${window.location.protocol}//${window.location.hostname}/api/mahjong/points/`, {
 				method: 'POST',
 				headers: headers,
 				body: JSON.stringify({
@@ -88,9 +88,17 @@ export default function PointCalculationPage() {
 			}
 			
 			setCurrentProblem(problem)
-			setHandPicture(`${imageUrlBase}${data.display_hand}/`) // Placeholder for testing
-			setDoraPicture(`${imageUrlBase}${data.dora_indicators}/`)
-			setUraDoraPicture(`${imageUrlBase}${data.ura_dora_indicators}/`)
+			try {
+				const handPictureUrl = `${imageUrlBase}${decodeURIComponent(data.display_hand)}/`
+				const doraPictureUrl = `${imageUrlBase}${decodeURIComponent(data.dora_indicators)}/`
+				const uraDoraPictureUrl = `${imageUrlBase}${decodeURIComponent(data.ura_dora_indicators)}/`
+				console.log('Setting picture URLs:', { handPictureUrl, doraPictureUrl, uraDoraPictureUrl })
+				setHandPicture(handPictureUrl)
+				setDoraPicture(doraPictureUrl)
+				setUraDoraPicture(uraDoraPictureUrl)
+			} catch (decodeError) {
+				console.error('Failed to decode picture URLs:', decodeError, data)
+			}
 		} catch (error) {
 			console.error(error)
 			// Handle error
@@ -223,6 +231,10 @@ export default function PointCalculationPage() {
 									src={doraPicture || ''} 
 									alt="Dora Indicators"
 									className="h-16 w-auto shadow-sm rounded"
+									onError={(e) => {
+										console.error('Dora picture failed to load:', doraPicture);
+										e.currentTarget.style.display = 'none';
+									}}
 								/>
 							</div>
 
@@ -234,6 +246,10 @@ export default function PointCalculationPage() {
 										src={uraDoraPicture || ''} 
 										alt="Ura Dora Indicators"
 										className="h-16 w-auto shadow-sm rounded"
+										onError={(e) => {
+											console.error('Ura dora picture failed to load:', uraDoraPicture);
+											e.currentTarget.style.display = 'none';
+										}}
 									/>
 								</div>
 							)}
@@ -241,10 +257,15 @@ export default function PointCalculationPage() {
 
 						{/* Hand Image Area */}
 						<div className="mb-8 flex justify-center px-4">
+								{(() => { console.log('Rendering hand picture:', handPicture); return null; })()}
 								<img 
 									src={handPicture || ''} 
 									alt="Mahjong Hand" 
 									className="max-w-full h-auto shadow-sm rounded"
+									onError={(e) => {
+										console.error('Hand picture failed to load:', handPicture);
+										e.currentTarget.style.display = 'none';
+									}}
 								/>
 						</div>
 						
@@ -540,7 +561,7 @@ export default function PointCalculationPage() {
 														<div className="h-14 w-full  rounded-lg flex items-center justify-center text-xs text-slate-400 mb-2 overflow-hidden">
 																{detail.fu_url ? (
 																		<img 
-																				src={`${imageUrlBase}${detail.fu_url}`} 
+																				src={`${imageUrlBase}${decodeURIComponent(detail.fu_url)}`} 
 																				alt={detail.reason}
 																				className="h-full w-auto object-contain"
 																		/>

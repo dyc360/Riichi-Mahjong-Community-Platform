@@ -10,5 +10,6 @@ urlpatterns = [
     path('industry/', views.IndustryNewsView.as_view(), name='industry-news'),
     #path('m-league/rankings/', views.MLeagueRankingView.as_view(), name='mleague-rankings'),
     path('majsoul/', views.MajsoulNewsView.as_view(), name='majsoul-news'),
+    path('majsoul/<int:id>/', views.MajsoulNewsDetailView.as_view(), name='majsoul-news-detail'),
     path('home/', views.news_home_data, name='news-home-data'),
 ]

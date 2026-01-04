@@ -6,7 +6,7 @@ import { useCategories, getCategoryDisplayName, type Category } from '../context
 import { useNews, type Article } from '../contexts/NewsContext';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = '/api';
 
 // 文章详情缓存配置
 const ARTICLE_CACHE_KEY = 'news_article_detail_cache';
@@ -457,7 +457,7 @@ export default function NewsProPage() {
 							<div className="mt-6">
 								<ModuleContainer title="新闻分类" description="浏览更多相关内容">
 									<div className="space-y-2">
-										{categories
+										{Array.isArray(categories) && categories
 											.sort((a, b) => {
 												// 将 default 分类排到最后
 												if (a.slug === 'default') return 1;
