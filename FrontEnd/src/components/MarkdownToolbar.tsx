@@ -5,7 +5,7 @@ interface MarkdownToolbarProps {
 	setContent: (content: string) => void;
 	textareaRef: React.RefObject<HTMLTextAreaElement | null>;
 	imageInputRef?: React.RefObject<HTMLInputElement | null>; // 可选，如果不提供则组件内部创建
-	fetchPosts?: (params?: any) => Promise<any[]>; // 兼容不同的 fetchPosts 签名，使用 any 以支持各种参数类型
+	fetchPosts?: (params?: any) => Promise<any[] | { results: any[]; count: number; next: string | null; previous: string | null }>; // 兼容不同的 fetchPosts 签名，支持数组或分页响应格式
 	compact?: boolean; // 是否使用紧凑模式（用于回复）
 }
 
@@ -91,7 +91,9 @@ export default function MarkdownToolbar({
 
 		setIsSearchingPosts(true);
 		try {
-			const posts = await fetchPosts({ sort: 'latest', page: 1 });
+			const postsResponse = await fetchPosts({ sort: 'latest', page: 1, page_size: 50 });
+			// 处理分页响应格式：如果返回的是分页对象，提取 results；如果是数组，直接使用
+			const posts = Array.isArray(postsResponse) ? postsResponse : postsResponse.results;
 			const filtered = posts.filter(post => 
 				post.title.toLowerCase().includes(query.toLowerCase())
 			).slice(0, 10);

@@ -87,8 +87,8 @@ export default function NewsPage() {
 			try {
 				setMajsoulLoading(true);
 				setMajsoulError(null);
-				const response = await axios.get('http://localhost:8000/api/news_api/majsoul/');
-				const articles = response.data.results || response.data;
+				const response = await axios.get('/api/news/majsoul/');
+				const articles = response.data.data;
 				// 转换为GameInfoCard需要的格式
 				const formattedNews = articles.slice(0, 4).map((article: any, index: number) => ({
 					id: article.id,

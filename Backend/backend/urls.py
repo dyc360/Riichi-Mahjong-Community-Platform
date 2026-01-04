@@ -1,11 +1,13 @@
 from django.contrib import admin
 from django.urls import path, include
 from auth_api.views import home_view, HealthCheckView
+from auth_api.admin_site import admin_site
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', admin_site.urls),
     path('api/news_api/', include('news_api.urls')),
+    path('api/news/', include('news_api.urls')),  # 兼容前端使用的URL
     path('api/auth/', include('auth_api.urls')),
     path('api/mahjong/', include('mahjong_api.urls')),
     path('api/m-league/', include('mleague.urls')),  # M-League抓取器API

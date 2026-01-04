@@ -24,13 +24,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 
 class UserLoginSerializer(serializers.Serializer):
-<<<<<<< HEAD
     email = serializers.EmailField(required=False)  # 可选
     username = serializers.CharField(required=False)  # 可选
-=======
-    email = serializers.EmailField(required=False)
-    username = serializers.CharField(required=False)
->>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
     password = serializers.CharField()
 
     def validate(self, attrs):
@@ -57,11 +52,7 @@ class UserLoginSerializer(serializers.Serializer):
             except CustomUser.DoesNotExist:
                 raise serializers.ValidationError('用户名或密码错误')
 
-<<<<<<< HEAD
         # 使用用户名进行认证（Django 的 authenticate 需要 username）
-=======
-        # 使用用户名进行认证
->>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
         user = authenticate(username=user_obj.username, password=password)
 
         if not user:
@@ -78,7 +69,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     joinDate = serializers.SerializerMethodField()
     practiceStats = serializers.SerializerMethodField()
     forumStats = serializers.SerializerMethodField()
-    avatar = serializers.URLField(read_only=True)  # 去掉 source='avatar'
+    avatar = serializers.CharField(read_only=True)  # 支持base64数据
     isEmailVerified = serializers.SerializerMethodField()
 
     class Meta:

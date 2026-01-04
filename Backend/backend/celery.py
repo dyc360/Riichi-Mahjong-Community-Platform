@@ -24,6 +24,11 @@ app.conf.beat_schedule = {
         'task': 'mleague.tasks.celery_update_all_current',
         'schedule': crontab(hour=0, minute=0),  # 每天凌晨0点
     },
+    # 每4小时更新一次雀魂新闻数据
+    'update-majsoul-news-periodic': {
+        'task': 'news_api.tasks.celery_update_majsoul_news',
+        'schedule': crontab(minute=0, hour='*/4'),  # 每4小时执行一次
+    },
 }
 
 # 时区设置

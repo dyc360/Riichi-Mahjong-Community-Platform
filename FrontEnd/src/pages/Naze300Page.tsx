@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { HomePageHeader, MainNavigation } from '../components/homePageComp';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -20,12 +20,48 @@ interface Naze300Question {
 }
 
 export default function Naze300Page() {
-  const { user } = useAuth();
+  const { user, isLoading, token } = useAuth();
+  const navigate = useNavigate();
   const [questions, setQuestions] = useState<Naze300Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const questionsPerPage = 10;
+
+  // 检查用户认证状态
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!user || !token) return;
+
+      try {
+        const response = await fetch('/api/auth/profile/', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          // 认证失败，清除本地状态并重定向到登录页
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          navigate('/login?redirect=' + encodeURIComponent(window.location.pathname), { replace: true });
+        }
+      } catch (error) {
+        console.error('认证检查失败:', error);
+        // 网络错误时也重定向到登录页
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        navigate('/login?redirect=' + encodeURIComponent(window.location.pathname), { replace: true });
+      }
+    };
+
+    if (!isLoading && user) {
+      checkAuth();
+    }
+  }, [user, token, isLoading, navigate]);
 
   // 模拟从数据库获取题目数据
   useEffect(() => {

@@ -34,12 +34,12 @@ export default function MLeagueStatsPage() {
 
 	// 预处理表格数据
 	const processedTableData = useMemo(() => {
-		if (!pointsData || !pointsData[activePointsTable]) {
+		if (!pointsData || !pointsData[activePointsTable] || !Array.isArray(pointsData[activePointsTable])) {
 			return { columns: [], rows: [] };
 		}
 
 		const tableData = pointsData[activePointsTable];
-		if (tableData.length === 0) {
+		if (tableData.length === 0 || !tableData[0]) {
 			return { columns: [], rows: [] };
 		}
 

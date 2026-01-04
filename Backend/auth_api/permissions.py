@@ -1,6 +1,7 @@
 # auth_api/permissions.py
 from rest_framework import permissions
 from django.contrib.auth.models import Group
+from .models import AdminRole
 
 
 class IsNewsEditor(permissions.BasePermission):
@@ -80,3 +81,65 @@ class HasModerationPermissions(permissions.BasePermission):
         allowed_groups = ['moderator', 'admin']
         return (request.user.groups.filter(name__in=allowed_groups).exists() or
                 request.user.is_superuser)
+
+
+# 基于AdminRole的权限类
+class HasRolePermission(permissions.BasePermission):
+    """
+    基于AdminRole检查权限的基类
+    """
+    allowed_roles = []
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        if request.user.is_superuser:
+            return True
+
+        if request.user.role and request.user.role.name in self.allowed_roles:
+            return True
+
+        return False
+
+
+class IsSuperAdmin(HasRolePermission):
+    """
+    超级管理员权限
+    """
+    allowed_roles = ['super_admin']
+
+
+class IsNewsEditorRole(HasRolePermission):
+    """
+    新闻编辑者角色权限
+    """
+    allowed_roles = ['news_editor', 'super_admin', 'content_manager']
+
+
+class IsPracticeEditorRole(HasRolePermission):
+    """
+    练习编辑者角色权限
+    """
+    allowed_roles = ['practice_editor', 'super_admin', 'content_manager']
+
+
+class IsModeratorRole(HasRolePermission):
+    """
+    版主角色权限
+    """
+    allowed_roles = ['moderator', 'super_admin', 'forum_moderator', 'content_manager']
+
+
+class IsForumModeratorRole(HasRolePermission):
+    """
+    论坛版主角色权限
+    """
+    allowed_roles = ['forum_moderator', 'moderator', 'super_admin', 'content_manager']
+
+
+class IsContentManagerRole(HasRolePermission):
+    """
+    内容管理员角色权限
+    """
+    allowed_roles = ['content_manager', 'super_admin']

@@ -84,6 +84,8 @@ export default function ForumSectionPage() {
 		}
 	}, [sections, sectionname]);
 
+	const [totalCount, setTotalCount] = useState(0);
+
 	// 加载帖子列表
 	useEffect(() => {
 		const loadPosts = async () => {
@@ -91,12 +93,14 @@ export default function ForumSectionPage() {
 
 			try {
 				setLoading(true);
-				const postsData = await fetchPosts({
+				const result = await fetchPosts({
 					section: sectionname,
 					sort: sortType as 'latest' | 'hot',
 					page: currentPage,
+					page_size: postsPerPage,
 				});
-				setPosts(postsData);
+				setPosts(result.results);
+				setTotalCount(result.count);
             } catch (err) {
 				console.error('加载帖子失败:', err);
 				setError('加载帖子失败，请稍后重试');
@@ -106,7 +110,7 @@ export default function ForumSectionPage() {
         };
 
 		loadPosts();
-	}, [sectionname, sortType, currentPage, fetchPosts]);
+	}, [sectionname, sortType, currentPage, fetchPosts, postsPerPage]);
 
     const handleSortChange = (newSortType: string) => {
         navigate(`?sort=${newSortType}&page=1`, { replace: true });
@@ -118,10 +122,8 @@ export default function ForumSectionPage() {
         window.scrollTo(0, 0);
     };
 
-    const totalPages = Math.ceil(posts.length / postsPerPage);
-    const indexOfLastPost = currentPage * postsPerPage;
-    const indexOfFirstPost = indexOfLastPost - postsPerPage;
-    const currentPosts = posts.slice(indexOfFirstPost, indexOfLastPost);
+    const totalPages = Math.ceil(totalCount / postsPerPage);
+    const currentPosts = posts;
 
     const handleGoBack = () => {
         navigate(-1);

@@ -8,8 +8,65 @@ import logging
 from typing import Dict, List, Optional
 from datetime import datetime
 import time
+from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
+
+
+class SeleniumBrowserManager:
+    """
+    Selenium浏览器上下文管理器
+    确保浏览器实例总是被正确关闭，避免资源泄漏
+    """
+    
+    def __init__(self, headless: bool = True, user_agent: str = None):
+        """
+        初始化浏览器管理器
+        
+        Args:
+            headless: 是否使用无头模式
+            user_agent: 自定义User-Agent字符串
+        """
+        self.headless = headless
+        self.user_agent = user_agent or 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        self.driver = None
+    
+    def __enter__(self):
+        """进入上下文时创建浏览器实例"""
+        try:
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+            
+            chrome_options = Options()
+            if self.headless:
+                chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--window-size=1920,1080")
+            chrome_options.add_argument(f"user-agent={self.user_agent}")
+            
+            self.driver = webdriver.Chrome(options=chrome_options)
+            logger.debug("Selenium浏览器实例已创建")
+            return self.driver
+            
+        except ImportError:
+            logger.error("Selenium未安装，无法创建浏览器实例")
+            raise Exception("Selenium未安装，请安装: pip install selenium")
+        except Exception as e:
+            logger.error(f"创建Selenium浏览器实例失败: {str(e)}")
+            raise
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """退出上下文时关闭浏览器实例"""
+        if self.driver:
+            try:
+                self.driver.quit()
+                logger.debug("Selenium浏览器实例已关闭")
+            except Exception as e:
+                logger.warning(f"关闭Selenium浏览器实例时出错: {str(e)}")
+        # 返回False表示不抑制异常
+        return False
 
 
 class MLeagueScraper:
@@ -70,27 +127,20 @@ class MLeagueScraper:
     def _fetch_with_selenium(self, url: str) -> BeautifulSoup:
         """
         使用Selenium加载页面（用于需要JavaScript渲染的页面）
+        使用上下文管理器确保浏览器实例总是被正确关闭
         """
         try:
-            from selenium import webdriver
-            from selenium.webdriver.chrome.options import Options
             from selenium.webdriver.common.by import By
             from selenium.webdriver.support.ui import WebDriverWait
             from selenium.webdriver.support import expected_conditions as EC
-            
-            chrome_options = Options()
-            chrome_options.add_argument("--headless")
-            chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--window-size=1920,1080")
-            chrome_options.add_argument(
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            )
-            
-            driver = webdriver.Chrome(options=chrome_options)
-            logger.info(f"使用Selenium访问: {url}")
-            
+        except ImportError:
+            logger.error("Selenium未安装，无法使用Selenium加载页面")
+            raise Exception("Selenium未安装，请安装: pip install selenium")
+        
+        logger.info(f"使用Selenium访问: {url}")
+        
+        # 使用上下文管理器确保浏览器总是被关闭
+        with SeleniumBrowserManager(headless=True) as driver:
             driver.get(url)
             
             # 等待页面加载完成（等待至少一个比赛列表出现）
@@ -98,7 +148,7 @@ class MLeagueScraper:
                 WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located((By.CLASS_NAME, "p-gamesSchedule2__lists"))
                 )
-            except:
+            except Exception:
                 logger.warning("等待比赛列表超时，继续解析...")
             
             # 额外等待一段时间确保所有内容加载完成
@@ -106,16 +156,9 @@ class MLeagueScraper:
             
             # 获取页面源码
             page_source = driver.page_source
-            driver.quit()
-            
-            return BeautifulSoup(page_source, 'html.parser')
-            
-        except ImportError:
-            logger.warning("Selenium未安装，无法使用Selenium加载页面")
-            raise Exception("Selenium未安装，请安装: pip install selenium")
-        except Exception as e:
-            logger.error(f"使用Selenium加载页面失败: {str(e)}")
-            raise
+        
+        # 浏览器实例已自动关闭（通过上下文管理器的__exit__方法）
+        return BeautifulSoup(page_source, 'html.parser')
 
 
 class MLeagueOfficialScraper(MLeagueScraper):
@@ -967,65 +1010,81 @@ class MLeagueOfficialScraper(MLeagueScraper):
 
 def fetch_points_data():
     """获取M-League积分历史数据"""
+    url = "https://m-league.jp/points"
+    soup = None
+    
+    # 首先尝试使用Selenium获取数据
     try:
-        # 尝试使用Selenium获取数据
-        from selenium import webdriver
-        from selenium.webdriver.chrome.options import Options
-        #from selenium.webdriver.chrome.service import Service
-        #from webdriver_manager.chrome import ChromeDriverManager
         from selenium.webdriver.common.by import By
         from selenium.webdriver.support.ui import WebDriverWait
         from selenium.webdriver.support import expected_conditions as EC
-        import time
-
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")  # 无头模式
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_argument(
-            "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        )
-
-        #driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-        driver = webdriver.Chrome(options=chrome_options)
-        url = "https://m-league.jp/points"
-        logger.info(f"访问URL: {url}")
-
-        driver.get(url)
-
-        # 等待页面加载完成
-        WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.ID, "points-table1"))
-        )
-
-        # 额外等待一段时间确保JavaScript执行完成
-        time.sleep(5)
-
-        # 获取页面源码
-        page_source = driver.page_source
+        
+        logger.info(f"使用Selenium访问URL: {url}")
+        
+        # 使用上下文管理器确保浏览器总是被关闭
+        with SeleniumBrowserManager(
+            headless=True,
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        ) as driver:
+            driver.get(url)
+            
+            # 等待页面加载完成
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.ID, "points-table1"))
+            )
+            
+            # 额外等待一段时间确保JavaScript执行完成
+            time.sleep(5)
+            
+            # 获取页面源码
+            page_source = driver.page_source
+        
+        # 浏览器实例已自动关闭（通过上下文管理器的__exit__方法）
         soup = BeautifulSoup(page_source, 'html.parser')
-        driver.quit()
-
+        
     except ImportError:
         # 如果没有安装selenium，尝试使用requests（可能获取不到动态内容）
         logger.warning("Selenium未安装，尝试使用requests获取数据")
-        url = "https://m-league.jp/points"
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
-
-        response = requests.get(url, headers=headers, timeout=30)
-        response.raise_for_status()
-        response.encoding = 'utf-8'
-        soup = BeautifulSoup(response.text, 'html.parser')
-
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            response.raise_for_status()
+            response.encoding = 'utf-8'
+            soup = BeautifulSoup(response.text, 'html.parser')
+        except Exception as e:
+            logger.error(f"使用requests获取数据失败: {str(e)}")
+            return {
+                'success': False,
+                'message': f'获取数据失败: {str(e)}'
+            }
+            
     except Exception as e:
-        logger.error(f"初始化浏览器失败: {str(e)}")
+        logger.error(f"使用Selenium获取数据失败: {str(e)}")
+        # 如果Selenium失败，尝试使用requests作为备选方案
+        logger.info("尝试使用requests作为备选方案")
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            response.raise_for_status()
+            response.encoding = 'utf-8'
+            soup = BeautifulSoup(response.text, 'html.parser')
+        except Exception as req_error:
+            logger.error(f"使用requests获取数据也失败: {str(req_error)}")
+            return {
+                'success': False,
+                'message': f'获取数据失败: Selenium错误={str(e)}, Requests错误={str(req_error)}'
+            }
+    
+    if soup is None:
         return {
             'success': False,
-            'message': f'初始化浏览器失败: {str(e)}'
+            'message': '无法获取页面数据'
         }
 
     try:

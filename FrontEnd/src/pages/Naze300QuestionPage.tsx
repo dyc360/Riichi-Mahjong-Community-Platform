@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { HomePageHeader, MainNavigation } from '../components/homePageComp';
 import { getCsrfToken } from '../utils';
+import { useAuth } from '../contexts/AuthContext';
 
-// Base URL for the image API - use absolute URL to work with both nginx proxy and direct access
+// Base URL for APIs - use absolute URL to work with both nginx proxy and direct access
+const apiBaseUrl = window.location.protocol + '//' + window.location.hostname + '/api'
 const imageUrlBase = window.location.protocol + '//' + window.location.hostname + '/api/mahjong/images/'
 
 interface Naze300Question {
@@ -34,6 +36,7 @@ interface Naze300Question {
 export default function Naze300QuestionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, isLoading, token } = useAuth();
   const [question, setQuestion] = useState<Naze300Question | null>(null);
   const [loading, setLoading] = useState(true);
   const [handPicture, setHandPicture] = useState<string | null>(null);
@@ -43,6 +46,41 @@ export default function Naze300QuestionPage() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+
+  // 检查用户认证状态
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!user || !token) return;
+
+      try {
+        const response = await fetch(`${apiBaseUrl}/auth/profile/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          // 认证失败，清除本地状态并重定向到登录页
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          navigate('/login?redirect=' + encodeURIComponent(window.location.pathname), { replace: true });
+        }
+      } catch (error) {
+        console.error('认证检查失败:', error);
+        // 网络错误时也重定向到登录页
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        navigate('/login?redirect=' + encodeURIComponent(window.location.pathname), { replace: true });
+      }
+    };
+
+    if (!isLoading && user) {
+      checkAuth();
+    }
+  }, [user, token, isLoading, navigate]);
 
   useEffect(() => {
     const fetchQuestion = async () => {
@@ -57,7 +95,7 @@ export default function Naze300QuestionPage() {
         const questionId = parseInt(id || '1');
 
         // 从API获取题目数据
-        const response = await fetch(`/api/mahjong/naze300/${questionId}/`, {
+        const response = await fetch(`${apiBaseUrl}/mahjong/naze300/${questionId}/`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -438,11 +476,12 @@ export default function Naze300QuestionPage() {
                   if (!selectedDiscard || !question) return;
 
                   try {
-                    const response = await fetch(`/api/mahjong/naze300/${question.id}/submit/`, {
+                    const response = await fetch(`${apiBaseUrl}/mahjong/naze300/${question.id}/submit/`, {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCsrfToken() || '',
+                        'Authorization': token ? `Bearer ${token}` : '',
                       },
                       credentials: 'include',
                       body: JSON.stringify({

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { type ChangeEvent, type FormEvent, useMemo, useState } from 'react'
 import {PasswordField, HeroSection, BrandHeader, BackgroundGlow, Prompt, PolicyFooter} from '../components/loginComp'
+import { getCsrfToken } from '../utils';
 
 const API_BASE_URL = '/api';
 
@@ -75,7 +76,9 @@ function useSignUpForm(): UseSignUpFormResult {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken() || '',
         },
+        credentials: 'include',
         body: JSON.stringify({
           username: form.username,
           email: form.email,
@@ -298,10 +301,10 @@ function SignUpForm({
 						autoComplete="username"
 						value={form.username}
 						onChange={onUsernameChange}
-						className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 ${
+						className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 ${
 							fieldErrors.username
-								? 'border-red-500 bg-red-950/20 focus:border-red-500 focus:ring-red-500/50'
-								: 'border-slate-700/80 bg-slate-950/80 focus:border-indigo-400 focus:ring-indigo-400/50'
+								? 'border-red-500 bg-red-50 dark:bg-red-950/20 focus:border-red-500 focus:ring-red-500/50'
+								: 'border-gray-300 dark:border-slate-600 focus:border-indigo-400 focus:ring-indigo-400/50'
 						}`}
 						placeholder="给自己起一个独特的昵称"
 					/>
@@ -323,10 +326,10 @@ function SignUpForm({
 						autoComplete="email"
 						value={form.email}
 						onChange={onEmailChange}
-						className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 ${
+						className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 ${
 							fieldErrors.email
-								? 'border-red-500 bg-red-950/20 focus:border-red-500 focus:ring-red-500/50'
-								: 'border-slate-700/80 bg-slate-950/80 focus:border-indigo-400 focus:ring-indigo-400/50'
+								? 'border-red-500 bg-red-50 dark:bg-red-950/20 focus:border-red-500 focus:ring-red-500/50'
+								: 'border-gray-300 dark:border-slate-600 focus:border-indigo-400 focus:ring-indigo-400/50'
 						}`}
 						placeholder="输入你的邮箱地址"
 					/>
@@ -377,37 +380,9 @@ function SignUpForm({
 					{isSubmitting ? '注册中…' : '创建账户'}
 				</button>
 			</form>
-
-			<SocialLogin />
 		</div>
 	)
 }
-
-// Displays placeholder single-sign-on options using a data-driven layout.
-function SocialLogin() {
-	return (
-		<div className="mt-8 space-y-4">
-			<div className="flex items-center gap-3 text-xs text-slate-500">
-				<span className="h-px flex-1 bg-slate-700" />
-				或者使用以下方式注册
-				<span className="h-px flex-1 bg-slate-700" />
-			</div>
-			<div className="grid grid-cols-3 gap-3 text-xs font-medium text-slate-300">
-				{SOCIAL_PROVIDERS.map((provider) => (
-					<button
-						key={provider.id}
-						type="button"
-						className="flex items-center justify-center gap-2 rounded-xl border border-slate-700/70 bg-slate-950/70 px-3 py-2 transition hover:border-indigo-400/60 hover:text-white"
-					>
-						{provider.label}
-					</button>
-				))}
-			</div>
-		</div>
-	)
-}
-
-
 
 // Pulls everything together so layout, logic, and decoration stay focused.
 function SignUpPage() {

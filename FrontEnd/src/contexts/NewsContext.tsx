@@ -156,14 +156,18 @@ function NewsProviderInner({ children }: { children: ReactNode }) {
 			setLoading(true);
 			setError(null);
 
-			const response = await axios.get<Article[]>(`${API_BASE_URL}/news_api/articles/`);
-			const data = response.data.filter(article => article.status === 'published');
+			const response = await axios.get(`${API_BASE_URL}/news_api/articles/`);
+			// 处理分页响应：如果返回的是分页对象，从 results 字段获取数据；否则直接使用 data
+			const responseData = response.data;
+			const articlesArray: Article[] = Array.isArray(responseData) 
+				? responseData 
+				: (responseData.results || []);
+			const data = articlesArray.filter((article: Article) => article.status === 'published');
 
 			setArticles(data);
 			// 使用当前的 categorySlugMap 转换
 			const transformed = data
-				.filter(article => article.status === 'published')
-				.map(article => transformArticleToNewsItem(article, categorySlugMap));
+				.map((article: Article) => transformArticleToNewsItem(article, categorySlugMap));
 			setNewsList(transformed);
 			setLastUpdated(Date.now());
 
@@ -209,6 +213,7 @@ function NewsProviderInner({ children }: { children: ReactNode }) {
 
 	// 按分类获取新闻
 	const getNewsByCategory = useCallback((categorySlug: string): NewsListItem[] => {
+		if (!Array.isArray(newsList)) return [];
 		if (!categorySlug) return newsList;
 
 		// 通过 category_name 或 slug 查找
@@ -225,6 +230,7 @@ function NewsProviderInner({ children }: { children: ReactNode }) {
 
 	// 搜索新闻
 	const searchNews = useCallback((keyword: string): NewsListItem[] => {
+		if (!Array.isArray(newsList)) return [];
 		if (!keyword) return newsList;
 		const lowerKeyword = keyword.toLowerCase();
 		return newsList.filter(news =>
@@ -236,6 +242,9 @@ function NewsProviderInner({ children }: { children: ReactNode }) {
 
 	// 获取最新新闻
 	const getLatestNews = useCallback((limit: number = 10): NewsListItem[] => {
+		// 确保 newsList 和 articles 都是数组
+		if (!Array.isArray(newsList) || !Array.isArray(articles)) return [];
+		
 		// 从 articles 中获取发布时间进行排序
 		return newsList
 			.map(news => {

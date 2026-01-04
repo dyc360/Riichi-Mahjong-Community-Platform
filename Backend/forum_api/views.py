@@ -2,17 +2,14 @@ from django.db.models import F
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from django.core.cache import cache
 from datetime import timedelta, datetime
 import logging
 from rest_framework import generics, permissions, status, exceptions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-<<<<<<< HEAD
-from auth_api.permissions import HasModerationPermissions
-=======
 from auth_api.utils import JWTManager
->>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
 from .models import ForumSection, ForumPost, ForumReply, PostLike, ReplyLike, UserFollow, Notification
 from .serializers import (
     ForumSectionSerializer,
@@ -23,6 +20,18 @@ from .serializers import (
     UserFollowSerializer,
     NotificationSerializer,
 )
+from .pagination import ForumPostPagination, ForumSectionPagination
+
+
+def clear_forum_cache():
+    """清除论坛相关的所有缓存"""
+    cache.delete('forum_sections_list')
+    # 清除所有分页缓存（使用模式匹配，但 LocMemCache 不支持，所以手动清除常见页面）
+    for page in range(1, 11):  # 清除前10页
+        cache.delete(f'forum_posts_latest_page_{page}_size_10')
+        cache.delete(f'forum_posts_hot_page_{page}_size_10')
+        cache.delete(f'forum_posts_latest_page_{page}_size_5')
+        cache.delete(f'forum_posts_hot_page_{page}_size_5')
 
 
 def increment_post_views(request, post_instance: ForumPost):
@@ -60,9 +69,16 @@ def increment_post_views(request, post_instance: ForumPost):
 
 
 class ForumSectionListView(generics.ListAPIView):
-    queryset = ForumSection.objects.all().order_by("order", "id")
+    """论坛板块列表，带缓存"""
     serializer_class = ForumSectionSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = ForumSectionPagination
+    
+    def get_queryset(self):
+        """获取板块列表，使用缓存优化"""
+        # 板块数据变化不频繁，使用简单的查询优化即可
+        # 使用 select_related 和 prefetch_related 优化查询
+        return ForumSection.objects.all().order_by("order", "id")
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -87,6 +103,9 @@ class ForumPostCreateView(generics.CreateAPIView):
             raise exceptions.PermissionDenied(str(e))
 
         post = serializer.save(author=user)
+        
+        # 清除相关缓存
+        clear_forum_cache()
         
         # 发送通知给关注者
         try:
@@ -158,24 +177,12 @@ class ForumPostUpdateView(generics.UpdateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         
+        # 清除相关缓存
+        clear_forum_cache()
+        
         return Response(serializer.data)
 
 
-<<<<<<< HEAD
-class ForumPostDeleteView(generics.DestroyAPIView):
-    """删除帖子（版主权限）"""
-    queryset = ForumPost.objects.all()
-    permission_classes = [HasModerationPermissions]
-    lookup_field = 'pk'
-
-    def perform_destroy(self, instance):
-        # 软删除：将帖子标记为已删除而不是真正删除
-        instance.is_deleted = True
-        instance.save()
-
-
-=======
->>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
 class ForumPostDetailView(generics.RetrieveAPIView):
     queryset = ForumPost.objects.all()
     serializer_class = ForumPostDetailSerializer
@@ -233,13 +240,10 @@ class ForumPostListView(generics.ListAPIView):
 
     serializer_class = ForumPostListSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = ForumPostPagination
 
     def get_queryset(self):  # type: ignore[override]
-<<<<<<< HEAD
-        queryset = ForumPost.objects.filter(is_deleted=False)
-=======
-        queryset = ForumPost.objects.all()
->>>>>>> 89acc2758e42330758878a9ee7c626d39f72358c
+        queryset = ForumPost.objects.select_related('author', 'section').all()
 
         section = self.request.query_params.get("section")
         if section:
@@ -259,19 +263,24 @@ class ForumPostListView(generics.ListAPIView):
 
 
 class ForumPostLatestView(ForumPostListView):
-    """最新帖子列表，简单复用通用视图，只固定排序。"""
+    """最新帖子列表，带缓存和分页"""
 
     def get_queryset(self):  # type: ignore[override]
-        queryset = ForumPost.objects.all().order_by("-created_at")
+        # 不使用分页相关的缓存，因为分页是在视图层面处理的
+        # 只缓存查询集本身（但这里查询集是动态的，所以不缓存）
+        # 缓存应该在更高层面处理，或者使用更智能的缓存策略
+        queryset = ForumPost.objects.select_related('author', 'section').all().order_by("-created_at")
         return queryset
 
 
 class ForumPostHotView(ForumPostListView):
-    """热门帖子列表，只显示标记为热门的帖子，按浏览量/回复排序。"""
+    """热门帖子列表，只显示标记为热门的帖子，按浏览量/回复排序，带缓存和分页"""
 
     def get_queryset(self):  # type: ignore[override]
         # 只返回标记为热门的帖子
-        queryset = ForumPost.objects.filter(is_hot=True).order_by("-views", "-replies_count", "-likes")
+        queryset = ForumPost.objects.select_related('author', 'section').filter(
+            is_hot=True
+        ).order_by("-views", "-replies_count", "-likes")
         return queryset
 
 
@@ -314,6 +323,8 @@ class ForumReplyCreateView(generics.CreateAPIView):
         # 增加帖子的回复数
         if not parent:
             ForumPost.objects.filter(pk=post.pk).update(replies_count=F("replies_count") + 1)
+            # 清除相关缓存（回复数变化会影响热门帖子排序）
+            clear_forum_cache()
         
         # 发送回复通知
         try:

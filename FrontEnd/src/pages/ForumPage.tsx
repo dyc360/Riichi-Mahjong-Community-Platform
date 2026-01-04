@@ -45,15 +45,17 @@ export default function ForumPage() {
 	const [latestPosts, setLatestPosts] = useState<ForumPost[]>([]);
 	const [loading, setLoading] = useState(true);
 
-	// 初始加载数据
+	// 初始加载数据 - 只请求需要的数据量
 	useEffect(() => {
 		const loadData = async () => {
 			try {
 				setLoading(true);
 				await Promise.all([
 					fetchSections(),
-					fetchHotPosts().then(setHotPosts),
-					fetchLatestPosts().then(setLatestPosts),
+					// 只请求4条热门帖子
+					fetchHotPosts(1, 4).then(result => setHotPosts(result.results)),
+					// 只请求5条最新帖子
+					fetchLatestPosts(1, 5).then(result => setLatestPosts(result.results)),
 				]);
 			} catch (error) {
 				console.error('加载论坛数据失败:', error);
@@ -64,18 +66,20 @@ export default function ForumPage() {
 		loadData();
 	}, [fetchSections, fetchHotPosts, fetchLatestPosts]);
 
-	// 每30s刷新热门帖子和最新帖子
+	// 每30s刷新热门帖子和最新帖子 - 只请求需要的数据量
 	useEffect(() => {
 		const interval = setInterval(async () => {
 			try {
 				await Promise.all([
-					fetchHotPosts().then(setHotPosts),
-					fetchLatestPosts().then(setLatestPosts),
+					// 只请求4条热门帖子
+					fetchHotPosts(1, 4).then(result => setHotPosts(result.results)),
+					// 只请求5条最新帖子
+					fetchLatestPosts(1, 5).then(result => setLatestPosts(result.results)),
 				]);
 			} catch (error) {
 				console.error('刷新帖子数据失败:', error);
 			}
-		}, 10000); // 10秒刷新一次
+		}, 30000); // 30秒刷新一次
 
 		return () => clearInterval(interval);
 	}, [fetchHotPosts, fetchLatestPosts]);

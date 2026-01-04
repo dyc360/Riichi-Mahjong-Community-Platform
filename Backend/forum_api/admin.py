@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import ForumSection, ForumPost, ForumReply
+from auth_api.admin_site import admin_site
 
 
 @admin.register(ForumSection)
@@ -16,13 +17,33 @@ class ForumSectionAdmin(admin.ModelAdmin):
         return obj.posts.count()
     post_count.short_description = '帖子数'
 
-    def has_change_permission(self, request, obj=None):
-        """允许修改功能"""
-        return True
-
     def has_add_permission(self, request):
-        """允许添加功能"""
-        return True
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['forum_moderator', 'content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator', 'forum_moderator']).exists()
+
+    def has_change_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['forum_moderator', 'content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator', 'forum_moderator']).exists()
+
+    def has_delete_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator']).exists()
+
+    def has_view_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['forum_moderator', 'content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator', 'forum_moderator']).exists() or request.user.is_staff
 
 
 @admin.register(ForumPost)
@@ -46,13 +67,30 @@ class ForumPostAdmin(admin.ModelAdmin):
     )
     ordering = ['-created_at']
 
-    def has_change_permission(self, request, obj=None):
-        """允许修改（但只能修改 is_hot 字段，其他字段在 readonly_fields 中）"""
-        return True
-
     def has_add_permission(self, request):
         """禁用添加功能"""
         return False
+
+    def has_change_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['forum_moderator', 'content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator', 'forum_moderator']).exists()
+
+    def has_delete_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['forum_moderator', 'content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator', 'forum_moderator']).exists()
+
+    def has_view_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['forum_moderator', 'content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator', 'forum_moderator']).exists() or request.user.is_staff
 
 
 @admin.register(ForumReply)
@@ -70,12 +108,70 @@ class ForumReplyAdmin(admin.ModelAdmin):
         return f'回复{obj.parent_id}' if obj.parent else '-'
     parent_id.short_description = '父回复ID'
 
-    def has_change_permission(self, request, obj=None):
-        """禁用修改功能"""
-        return False
-
     def has_add_permission(self, request):
         """禁用添加功能"""
         return False
 
+    def has_change_permission(self, request, obj=None):
+        """禁用修改功能"""
+        return False
 
+    def has_delete_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['forum_moderator', 'content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator', 'forum_moderator']).exists()
+
+    def has_view_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['forum_moderator', 'content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator', 'forum_moderator']).exists() or request.user.is_staff
+
+
+
+
+
+# 在模块加载完成后，将模型注册到自定义admin_site
+from django.apps import apps
+from django.core.management import execute_from_command_line
+import sys
+
+def register_to_custom_admin():
+    from auth_api.admin_site import admin_site
+    # 取消默认注册
+    try:
+        admin.site.unregister(ForumSection)
+    except admin.sites.NotRegistered:
+        pass
+    try:
+        admin.site.unregister(ForumPost)
+    except admin.sites.NotRegistered:
+        pass
+    try:
+        admin.site.unregister(ForumReply)
+    except admin.sites.NotRegistered:
+        pass
+    # 注册到自定义admin_site
+    admin_site.register(ForumSection, ForumSectionAdmin)
+    admin_site.register(ForumPost, ForumPostAdmin)
+    admin_site.register(ForumReply, ForumReplyAdmin)
+
+# 检查是否在迁移模式
+is_migration = 'migrate' in sys.argv or 'makemigrations' in sys.argv
+
+# 如果Django已经准备好且不在迁移模式，立即注册
+if apps.ready and not is_migration:
+    register_to_custom_admin()
+elif not is_migration:
+    # 否则在app ready时注册
+    from django.apps.config import AppConfig
+    original_ready = AppConfig.ready
+    def custom_ready(self):
+        result = original_ready(self)
+        if self.name == "forum_api":
+            register_to_custom_admin()
+        return result
+    AppConfig.ready = custom_ready

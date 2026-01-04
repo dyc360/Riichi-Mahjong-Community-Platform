@@ -176,11 +176,13 @@ const ForumModule = () => {
 				setLoading(true);
 				setError(null);
 				
-				// 获取热门帖子
-				const hotPosts = await fetchHotPosts();
+				// 获取热门帖子（只请求5条）
+				const hotPostsResult = await fetchHotPosts(1, 5);
+				const hotPosts = hotPostsResult.results;
 				
-				// 获取最新帖子
-				const latestPosts = await fetchLatestPosts();
+				// 获取最新帖子（只请求5条）
+				const latestPostsResult = await fetchLatestPosts(1, 5);
+				const latestPosts = latestPostsResult.results;
 				
 				// 合并帖子：优先热门帖子，如果不够5条，再从非热门帖子中补充
 				const combinedPosts: ForumPost[] = [];

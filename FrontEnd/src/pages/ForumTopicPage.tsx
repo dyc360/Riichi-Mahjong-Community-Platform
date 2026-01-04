@@ -100,18 +100,22 @@ export default function ForumTopicPage() {
     const currentPage = parseInt(searchParams.get('page') || '1', 10) || 1;
     const postsPerPage = 10;
 
+	const [totalCount, setTotalCount] = useState(0);
+
     useEffect(() => {
         const fetchTopicPosts = async () => {
 			if (!topic) return;
 
 			try {
 				setLoading(true);
-				const postsData = await fetchPosts({
+				const result = await fetchPosts({
 					topic: topic,
 					sort: sortType as 'latest' | 'hot',
 					page: currentPage,
+					page_size: postsPerPage,
 				});
-				setPosts(postsData);
+				setPosts(result.results);
+				setTotalCount(result.count);
             } catch (error) {
                 console.error('获取标签帖子失败:', error);
             } finally {
@@ -120,22 +124,20 @@ export default function ForumTopicPage() {
         };
 
         fetchTopicPosts();
-	}, [topic, sortType, currentPage, fetchPosts]);
+	}, [topic, sortType, currentPage, fetchPosts, postsPerPage]);
 
     const handleSortChange = (newSortType: string) => {
         navigate(`?sort=${newSortType}&page=1`, { replace: true });
     };
 
     const handlePageChange = (page: number) => {
-        if (page < 1 || page > Math.ceil(posts.length / postsPerPage)) return;
+        if (page < 1 || page > Math.ceil(totalCount / postsPerPage)) return;
         navigate(`?sort=${sortType}&page=${page}`, { replace: true });
         window.scrollTo(0, 0);
     };
 
-    const totalPages = Math.ceil(posts.length / postsPerPage);
-    const indexOfLastPost = currentPage * postsPerPage;
-    const indexOfFirstPost = indexOfLastPost - postsPerPage;
-    const currentPosts = posts.slice(indexOfFirstPost, indexOfLastPost);
+    const totalPages = Math.ceil(totalCount / postsPerPage);
+    const currentPosts = posts;
 
     const handleGoBack = () => {
         navigate(-1);
@@ -210,7 +212,7 @@ export default function ForumTopicPage() {
 
                 <ModuleContainer
                     title={`标签 "#${topic}" 相关帖子`}
-                    description={`共 ${posts.length} 条相关内容`}
+                    description={`共 ${totalCount} 条相关内容`}
                 >
                     {/* 排序选项 */}
                     <div className="flex flex-wrap items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-slate-700">

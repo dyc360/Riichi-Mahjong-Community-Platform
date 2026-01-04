@@ -15,6 +15,7 @@ class JWTAuthentication:
             '/api/auth/login/',
             '/api/m-league/',  # M-League数据API公开访问
             '/api/news_api/',   # 新闻API公开访问
+            '/api/mahjong/',    # 麻将相关API使用session认证
             '/admin/',
             '/health/',
             '/'

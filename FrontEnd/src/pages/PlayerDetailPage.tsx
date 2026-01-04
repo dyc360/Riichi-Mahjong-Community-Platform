@@ -4,7 +4,7 @@ import { HomePageHeader, ModuleContainer } from '../components/homePageComp';
 import axios from 'axios';
 import { useMLeague, type PlayerStat } from '../contexts/MLeagueContext';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = '/api';
 
 // 定义选手类型接口
 interface Player {

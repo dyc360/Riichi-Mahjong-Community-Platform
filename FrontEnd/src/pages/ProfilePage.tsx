@@ -1,26 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HomePageHeader } from '../components/homePageComp';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, type UserProfile } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
-// 定义用户资料数据类型
-type UserProfile = {
-  username: string;
-  email: string;
-  avatar: string;
-  joinDate: string;
-  practiceStats: {
-    completed: number;
-    accuracy: number;
-    rank: string;
-  };
-  forumStats: {
-    posts: number;
-    replies: number;
-    likes: number;
-  };
-  isEmailVerified?: boolean;
-};
 
 // 添加 API 响应类型
 type ApiResponse = {
@@ -30,161 +13,87 @@ type ApiResponse = {
 };
 
 export default function ProfilePage() {
-  const { user, logout, token } = useAuth();
+  const { user, logout, token, isLoading, userProfile, profileLoading, fetchUserProfile, updateUserProfile } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 从后端获取用户资料
-  useEffect(() => {
-    fetchUserProfile();
-  }, []);
-
-const fetchUserProfile = async () => {
-  console.log('🔍 === 开始获取用户资料 ===');
-  console.log('🔍 当前 token:', token ? `有 (${token.length} 字符)` : '无');
-  console.log('🔍 当前用户:', user);
-
-  try {
-    setLoading(true);
-    setError(null);
-
-    // 构建请求头
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json'
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-      console.log('🔍 请求头:', headers);
-    } else {
-      console.warn('⚠️ 没有 token，请求可能失败');
-    }
-
-    console.log('🔍 发送请求到: /api/auth/profile/');
-    const startTime = Date.now();
-
-    const response = await fetch('/api/auth/profile/', {
-      method: 'GET',
-      headers: headers,
-      credentials: 'include'  // 重要：包含 cookies
-    });
-
-    const endTime = Date.now();
-    console.log(`🔍 请求耗时: ${endTime - startTime}ms`);
-    console.log(`🔍 响应状态: ${response.status} ${response.statusText}`);
-
-    // 检查响应状态
-    if (!response.ok) {
-      console.error(`❌ 响应错误: ${response.status} ${response.statusText}`);
-
-      // 尝试获取错误信息
-      let errorText = '';
-      try {
-        errorText = await response.text();
-        console.error(`❌ 错误响应内容:`, errorText);
-      } catch {
-        console.error(`❌ 无法读取错误响应`);
-      }
-
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    // 获取响应文本
-    const responseText = await response.text();
-    console.log(`🔍 响应文本长度: ${responseText.length} 字符`);
-    console.log(`🔍 响应文本预览:`, responseText.substring(0, 200));
-
-    // 检查是否为空
-    if (!responseText.trim()) {
-      console.error('❌ 服务器返回空响应');
-      throw new Error('服务器返回空响应');
-    }
-
-    // 尝试解析 JSON
-    let data: ApiResponse;
-    try {
-      data = JSON.parse(responseText);
-      console.log('✅ JSON 解析成功');
-      console.log('✅ 解析后的数据:', data);
-    } catch (jsonError) {
-      console.error('❌ JSON 解析失败:', jsonError);
-      console.error('❌ 原始响应文本:', responseText);
-
-      // 检查是否是 HTML 错误页面
-      if (responseText.includes('<!DOCTYPE html>') || responseText.includes('<html')) {
-        console.error('❌ 服务器返回 HTML 错误页面');
-        // 提取可能的错误信息
-        const errorMatch = responseText.match(/<pre[^>]*>([\s\S]*?)<\/pre>/);
-        if (errorMatch) {
-          console.error('❌ HTML 中的错误信息:', errorMatch[1]);
-        }
-        throw new Error('服务器返回错误页面');
-      }
-      throw new Error(`响应不是有效的 JSON: ${(jsonError as Error).message}`);
-    }
-
-    if (data.success && data.user) {
-      console.log('🎉 获取用户资料成功!');
-      console.log('🎉 用户数据:', data.user);
-      setProfile(data.user);
-    } else {
-      console.error('❌ API 返回失败:', data.message);
-      setError(data.message || '获取用户资料失败');
-      setProfile(getDefaultProfile());
-    }
-
-  } catch (err) {
-    console.error('💥 获取用户资料失败:', err);
-    const errorMessage = (err as Error).message;
-    setError(`网络错误: ${errorMessage}`);
-
-    // 使用默认数据
-    const defaultProfile = getDefaultProfile();
-    console.log('📝 使用默认数据:', defaultProfile);
-    setProfile(defaultProfile);
-
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // 默认数据（仅在后备时使用）
-  const getDefaultProfile = (): UserProfile => {
-    return {
-      username: user?.username || '用户名',
-      email: user?.email || 'user@example.com',
-      avatar: 'https://placehold.co/100x100/6366f1/ffffff?text=User',
-      joinDate: '2023-01-15',
-      practiceStats: {
-        completed: 42,
-        accuracy: 78,
-        rank: '四段',
-      },
-      forumStats: {
-        posts: 12,
-        replies: 36,
-        likes: 89,
-      },
-      isEmailVerified: true,
-    };
+  // 计算注册天数
+  const calculateDaysSinceJoin = (joinDate: string) => {
+    const join = new Date(joinDate);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - join.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
+
+  const daysSinceJoin = userProfile ? calculateDaysSinceJoin(userProfile.joinDate) : 0;
+
+  // 从后端获取用户资料（只在认证完成后且没有缓存时执行）
+  useEffect(() => {
+    if (!isLoading && user && !userProfile) {
+      fetchUserProfile();
+    }
+  }, [isLoading, user, userProfile, fetchUserProfile]);
 
   // 未登录状态重定向到登录页
   useEffect(() => {
-    if (!user) {
+    if (!isLoading && !user) {
       navigate('/login', { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, isLoading, navigate]);
 
-  const handleLogout = () => {
-    logout();
-    localStorage.removeItem('authToken');
-    navigate('/login', { replace: true });
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (userProfile) {
+      const updatedProfile = { ...userProfile, [name]: value };
+      updateUserProfile(updatedProfile);
+    }
+  };
+
+  // 处理头像文件上传
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && userProfile) {
+      // 检查文件类型
+      if (!file.type.startsWith('image/')) {
+        setError('请选择图片文件');
+        return;
+      }
+
+      // 检查文件大小（限制为5MB）
+      if (file.size > 5 * 1024 * 1024) {
+        setError('图片大小不能超过5MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        const updatedProfile = { ...userProfile, avatar: result };
+        updateUserProfile(updatedProfile);
+        setShowAvatarModal(false);
+        setError(null);
+      };
+      reader.onerror = () => {
+        setError('读取图片失败');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // 处理头像URL输入
+  const handleAvatarUrlChange = (url: string) => {
+    if (userProfile) {
+      const updatedProfile = { ...userProfile, avatar: url };
+      updateUserProfile(updatedProfile);
+      setShowAvatarModal(false);
+      setError(null);
+    }
   };
 
   // 返回主页的处理函数
@@ -192,38 +101,9 @@ const fetchUserProfile = async () => {
     navigate('/home');
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    if (profile) {
-      if (name === 'username' || name === 'email' || name === 'avatar') {
-        setProfile(prev => ({ ...prev!, [name]: value }));
-      }
-    }
-  };
-
-  const handlePracticeStatsChange = (field: keyof UserProfile['practiceStats'], value: string) => {
-    if (profile) {
-      const numValue = field === 'completed' ? parseInt(value) || 0 : parseFloat(value) || 0;
-      setProfile(prev => ({
-        ...prev!,
-        practiceStats: {
-          ...prev!.practiceStats,
-          [field]: field === 'rank' ? value : numValue
-        }
-      }));
-    }
-  };
-
-  const handleForumStatsChange = (field: keyof UserProfile['forumStats'], value: string) => {
-    if (profile) {
-      setProfile(prev => ({
-        ...prev!,
-        forumStats: {
-          ...prev!.forumStats,
-          [field]: parseInt(value) || 0
-        }
-      }));
-    }
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
   };
 
   const toggleEditMode = async () => {
@@ -235,57 +115,37 @@ const fetchUserProfile = async () => {
   };
 
   const saveProfile = async () => {
-    if (!profile) return;
+    if (!userProfile) return;
 
     try {
       setSaving(true);
 
-      // 更新基础信息
-      const updateResponse = await fetch('/api/auth/profile/', {
+      // 只更新用户名和头像
+      const response = await fetch('/api/auth/profile/', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          username: profile.username,
-          email: profile.email,
-          avatar: profile.avatar
+          username: userProfile.username,
+          avatar: userProfile.avatar
         })
       });
 
-      const updateData = await updateResponse.json();
+      const data = await response.json();
 
-      if (!updateData.success) {
-        throw new Error(updateData.message || '更新失败');
+      if (!data.success) {
+        throw new Error(data.message || '更新失败');
       }
 
-      // 更新统计数据
-      const statsResponse = await fetch('/api/auth/stats/update/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          practiceStats: profile.practiceStats,
-          forumStats: profile.forumStats
-        })
-      });
-
-      const statsData = await statsResponse.json();
-
-      if (!statsData.success) {
-        throw new Error(statsData.message || '统计数据更新失败');
-      }
-
-      // 重新获取最新数据
-      await fetchUserProfile();
+      // 更新缓存的用户资料
+      updateUserProfile(data.user);
 
     } catch (err) {
       console.error('保存失败:', err);
       setError(err instanceof Error ? err.message : '保存失败');
-      // 恢复编辑前的数据
+      // 重新获取最新数据
       await fetchUserProfile();
     } finally {
       setSaving(false);
@@ -296,15 +156,17 @@ const fetchUserProfile = async () => {
     fetchUserProfile();
   };
 
-  // 加载状态
-  if (loading) {
+  // 加载状态（包括认证初始化和数据加载）
+  if (isLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
         <HomePageHeader />
         <main className="container mx-auto px-4 py-20">
           <div className="flex flex-col items-center justify-center">
             <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-4 text-slate-600 dark:text-slate-400">加载用户资料中...</p>
+            <p className="mt-4 text-slate-600 dark:text-slate-400">
+              {isLoading ? '初始化认证中...' : '加载用户资料中...'}
+            </p>
           </div>
         </main>
       </div>
@@ -312,7 +174,7 @@ const fetchUserProfile = async () => {
   }
 
   // 错误状态
-  if (error && !profile) {
+  if (error && !userProfile) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
         <HomePageHeader />
@@ -334,7 +196,28 @@ const fetchUserProfile = async () => {
   }
 
   // 如果没有获取到数据，使用默认数据
-  const displayProfile = profile || getDefaultProfile();
+  const getDefaultProfile = (): UserProfile => {
+    return {
+      id: user?.id || 0,
+      username: user?.username || '用户名',
+      email: user?.email || 'user@example.com',
+      avatar: 'https://placehold.co/100x100/6366f1/ffffff?text=User',
+      joinDate: '2023-01-15',
+      practiceStats: {
+        completed: 42,
+        accuracy: 78,
+        rank: '四段',
+      },
+      forumStats: {
+        posts: 12,
+        replies: 36,
+        likes: 89,
+      },
+      isEmailVerified: true,
+    };
+  };
+
+  const displayProfile = userProfile || getDefaultProfile();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
@@ -390,12 +273,7 @@ const fetchUserProfile = async () => {
                 {/* 封面图区域 */}
                 {isEditing && (
                   <button
-                    onClick={() => {
-                      const newAvatar = prompt('请输入头像URL:', displayProfile.avatar);
-                      if (newAvatar && profile) {
-                        setProfile({...profile, avatar: newAvatar});
-                      }
-                    }}
+                    onClick={() => setShowAvatarModal(true)}
                     className="absolute right-4 bottom-4 text-white bg-black/30 p-2 rounded-full hover:bg-black/50 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -457,17 +335,7 @@ const fetchUserProfile = async () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-500 dark:text-slate-400">邮箱</span>
-                  {isEditing ? (
-                    <input
-                      type="email"
-                      name="email"
-                      value={displayProfile.email}
-                      onChange={handleInputChange}
-                      className="text-sm text-slate-900 dark:text-white bg-transparent border-b border-indigo-400 focus:outline-none"
-                    />
-                  ) : (
-                    <span className="text-sm text-slate-900 dark:text-white">{displayProfile.email}</span>
-                  )}
+                  <span className="text-sm text-slate-900 dark:text-white">{displayProfile.email}</span>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -495,24 +363,21 @@ const fetchUserProfile = async () => {
                     label="已完成练习"
                     value={displayProfile.practiceStats.completed}
                     suffix="题"
-                    isEditing={isEditing}
-                    onChange={(value) => handlePracticeStatsChange('completed', value)}
+                    isEditing={false}
                     type="number"
                   />
                   <StatItem
                     label="平均正确率"
                     value={displayProfile.practiceStats.accuracy}
                     suffix="%"
-                    isEditing={isEditing}
-                    onChange={(value) => handlePracticeStatsChange('accuracy', value)}
+                    isEditing={false}
                     type="number"
                     step="0.01"
                   />
                   <StatItem
                     label="当前段位"
                     value={displayProfile.practiceStats.rank}
-                    isEditing={isEditing}
-                    onChange={(value) => handlePracticeStatsChange('rank', value)}
+                    isEditing={false}
                     type="text"
                   />
                   <StatItem label="注册天数" value={daysSinceJoin} suffix="天" />
@@ -533,24 +398,21 @@ const fetchUserProfile = async () => {
                     label="发布主题"
                     value={displayProfile.forumStats.posts}
                     suffix="个"
-                    isEditing={isEditing}
-                    onChange={(value) => handleForumStatsChange('posts', value)}
+                    isEditing={false}
                     type="number"
                   />
                   <StatItem
                     label="回复数"
                     value={displayProfile.forumStats.replies}
                     suffix="条"
-                    isEditing={isEditing}
-                    onChange={(value) => handleForumStatsChange('replies', value)}
+                    isEditing={false}
                     type="number"
                   />
                   <StatItem
                     label="获得点赞"
                     value={displayProfile.forumStats.likes}
                     suffix="个"
-                    isEditing={isEditing}
-                    onChange={(value) => handleForumStatsChange('likes', value)}
+                    isEditing={false}
                     type="number"
                   />
                 </div>
@@ -565,6 +427,78 @@ const fetchUserProfile = async () => {
           </div>
         </div>
       </main>
+
+      {/* 头像编辑模态框 */}
+      {showAvatarModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">修改头像</h3>
+
+            <div className="space-y-4">
+              {/* 文件上传选项 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  从本地上传
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarFileChange}
+                  className="block w-full text-sm text-slate-500 dark:text-slate-400
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-lg file:border-0
+                    file:text-sm file:font-medium
+                    file:bg-indigo-50 file:text-indigo-700
+                    dark:file:bg-indigo-900/30 dark:file:text-indigo-300
+                    hover:file:bg-indigo-100 dark:hover:file:bg-indigo-800/30"
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  支持 JPG、PNG、GIF 格式，最大 5MB
+                </p>
+              </div>
+
+              {/* URL输入选项 */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  或输入图片链接
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/avatar.jpg"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg
+                    bg-white dark:bg-slate-700 text-slate-900 dark:text-white
+                    focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const target = e.target as HTMLInputElement;
+                      handleAvatarUrlChange(target.value);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowAvatarModal(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300
+                  bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600
+                  transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg
+                  hover:bg-indigo-700 transition-colors"
+              >
+                选择文件
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

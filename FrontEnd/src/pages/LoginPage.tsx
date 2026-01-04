@@ -297,8 +297,6 @@ function LoginForm({
           {isSubmitting ? '登录中…' : '登录'}
         </button>
       </form>
-
-      <SocialLogin />
     </div>
   )
 }

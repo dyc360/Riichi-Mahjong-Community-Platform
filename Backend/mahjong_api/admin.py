@@ -2,6 +2,7 @@ from django.contrib import admin
 from django import forms
 from django.utils.html import format_html
 from .models import Naze300Question, UserNazeProgress
+from auth_api.admin_site import admin_site
 
 
 class Naze300QuestionAdminForm(forms.ModelForm):
@@ -42,7 +43,6 @@ class Naze300QuestionAdminForm(forms.ModelForm):
         return question_id
 
 
-@admin.register(Naze300Question)
 class Naze300QuestionAdmin(admin.ModelAdmin):
     """何切300问题目的管理界面"""
 
@@ -73,6 +73,38 @@ class Naze300QuestionAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def has_add_permission(self, request):
+        """检查添加权限"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['practice_editor', 'content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name='practice-editor').exists()
+
+    def has_change_permission(self, request, obj=None):
+        """检查编辑权限"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['practice_editor', 'content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name='practice-editor').exists()
+
+    def has_delete_permission(self, request, obj=None):
+        """检查删除权限"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['practice-editor', 'moderator']).exists()
+
+    def has_view_permission(self, request, obj=None):
+        """检查查看权限"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['practice_editor', 'content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['practice-editor', 'moderator']).exists() or request.user.is_staff
 
     def difficulty_display(self, obj):
         """显示难度中文"""
@@ -121,7 +153,6 @@ class Naze300QuestionAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-@admin.register(UserNazeProgress)
 class UserNazeProgressAdmin(admin.ModelAdmin):
     """用户何切300问进度管理"""
 
@@ -160,3 +191,41 @@ class UserNazeProgressAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """优化查询"""
         return super().get_queryset(request).select_related('user', 'question')
+
+
+# 在模块加载完成后，将模型注册到自定义admin_site
+from django.apps import apps
+from django.core.management import execute_from_command_line
+import sys
+
+def register_to_custom_admin():
+    from auth_api.admin_site import admin_site
+    # 取消默认注册
+    try:
+        admin.site.unregister(Naze300Question)
+    except admin.sites.NotRegistered:
+        pass
+    try:
+        admin.site.unregister(UserNazeProgress)
+    except admin.sites.NotRegistered:
+        pass
+    # 注册到自定义admin_site
+    admin_site.register(Naze300Question, Naze300QuestionAdmin)
+    admin_site.register(UserNazeProgress, UserNazeProgressAdmin)
+
+# 检查是否在迁移模式
+is_migration = 'migrate' in sys.argv or 'makemigrations' in sys.argv
+
+# 如果Django已经准备好且不在迁移模式，立即注册
+if apps.ready and not is_migration:
+    register_to_custom_admin()
+elif not is_migration:
+    # 否则在app ready时注册
+    from django.apps.config import AppConfig
+    original_ready = AppConfig.ready
+    def custom_ready(self):
+        result = original_ready(self)
+        if self.name == 'mahjong_api':
+            register_to_custom_admin()
+        return result
+    AppConfig.ready = custom_ready

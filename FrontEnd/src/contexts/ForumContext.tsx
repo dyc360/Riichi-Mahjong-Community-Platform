@@ -83,17 +83,18 @@ interface ForumContextType {
 	sectionsError: string | null;
 
 	// 方法
-	fetchSections: () => Promise<void>;
+	fetchSections: (useCache?: boolean) => Promise<void>;
 	fetchPosts: (params?: {
 		section?: string;
 		topic?: string;
 		sort?: 'latest' | 'hot';
 		page?: number;
-	}) => Promise<ForumPost[]>;
+		page_size?: number;
+	}) => Promise<{ results: ForumPost[]; count: number; next: string | null; previous: string | null }>;
 	fetchPostDetail: (postId: number) => Promise<ForumPostDetail>;
 	fetchPostDetailByTitle: (title: string) => Promise<ForumPostDetail>;
-	fetchLatestPosts: (page?: number) => Promise<ForumPost[]>;
-	fetchHotPosts: (page?: number) => Promise<ForumPost[]>;
+	fetchLatestPosts: (page?: number, page_size?: number, useCache?: boolean) => Promise<{ results: ForumPost[]; count: number; next: string | null; previous: string | null }>;
+	fetchHotPosts: (page?: number, page_size?: number, useCache?: boolean) => Promise<{ results: ForumPost[]; count: number; next: string | null; previous: string | null }>;
 	createPost: (data: {
 		section_id: number;
 		title: string;
@@ -119,6 +120,17 @@ interface ForumContextType {
 
 const ForumContext = createContext<ForumContextType | undefined>(undefined);
 
+// 缓存键名
+const SECTIONS_CACHE_KEY = 'forum_sections_cache';
+const HOT_POSTS_CACHE_KEY = 'forum_hot_posts_cache';
+const LATEST_POSTS_CACHE_KEY = 'forum_latest_posts_cache';
+const CACHE_DURATION = 5 * 60 * 1000; // 5分钟缓存
+
+interface CachedData<T> {
+	data: T;
+	timestamp: number;
+}
+
 export function ForumProvider({ children }: { children: ReactNode }) {
 	// 设置 axios 默认发送凭据
 	axios.defaults.withCredentials = true;
@@ -139,28 +151,72 @@ export function ForumProvider({ children }: { children: ReactNode }) {
 		return headers;
 	}, [token]);
 
-	// 获取板块列表
-	const fetchSections = useCallback(async () => {
+	// 获取板块列表（带前端缓存）
+	const fetchSections = useCallback(async (useCache: boolean = true) => {
 		try {
+			// 尝试从缓存读取
+			if (useCache) {
+				const cached = localStorage.getItem(SECTIONS_CACHE_KEY);
+				if (cached) {
+					try {
+						const cachedData: CachedData<ForumSection[]> = JSON.parse(cached);
+						const now = Date.now();
+						if (now - cachedData.timestamp < CACHE_DURATION) {
+							setSections(cachedData.data);
+							setSectionsLoading(false);
+							setSectionsError(null);
+							return;
+						}
+					} catch (e) {
+						console.warn('板块缓存解析失败，从服务器获取');
+					}
+				}
+			}
+
 			setSectionsLoading(true);
 			setSectionsError(null);
-			const response = await axios.get<ForumSection[]>(`${API_BASE_URL}/forum/sections/`);
-			setSections(response.data);
+			const response = await axios.get<ForumSection[] | { results: ForumSection[] }>(`${API_BASE_URL}/forum/sections/`);
+			const data: ForumSection[] = Array.isArray(response.data) 
+				? response.data 
+				: (response.data.results || []);
+			setSections(data);
+
+			// 保存到缓存
+			const cacheData: CachedData<ForumSection[]> = {
+				data,
+				timestamp: Date.now()
+			};
+			localStorage.setItem(SECTIONS_CACHE_KEY, JSON.stringify(cacheData));
 		} catch (err: any) {
 			console.error('获取板块列表失败:', err);
 			setSectionsError('获取板块列表失败，请稍后重试');
+			
+			// 如果请求失败，尝试使用过期缓存
+			const cached = localStorage.getItem(SECTIONS_CACHE_KEY);
+			if (cached) {
+				try {
+					const cachedData: CachedData<ForumSection[]> = JSON.parse(cached);
+					setSections(cachedData.data);
+					console.warn('使用过期板块缓存数据');
+				} catch (e) {
+					setSections([]);
+				}
+			} else {
+				setSections([]);
+			}
 			throw err;
 		} finally {
 			setSectionsLoading(false);
 		}
 	}, []);
 
-	// 获取帖子列表
+	// 获取帖子列表（支持分页）
 	const fetchPosts = useCallback(async (params?: {
 		section?: string;
 		topic?: string;
 		sort?: 'latest' | 'hot';
 		page?: number;
+		page_size?: number;
 	}) => {
 		try {
 			const queryParams = new URLSearchParams();
@@ -168,10 +224,11 @@ export function ForumProvider({ children }: { children: ReactNode }) {
 			if (params?.topic) queryParams.append('topic', params.topic);
 			if (params?.sort) queryParams.append('sort', params.sort);
 			if (params?.page) queryParams.append('page', params.page.toString());
+			if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
 
 			const queryString = queryParams.toString();
 			const url = `${API_BASE_URL}/forum/posts/${queryString ? `?${queryString}` : ''}`;
-			const response = await axios.get<ForumPost[]>(url);
+			const response = await axios.get<{ results: ForumPost[]; count: number; next: string | null; previous: string | null }>(url);
 			return response.data;
 		} catch (err: any) {
 			console.error('获取帖子列表失败:', err);
@@ -216,28 +273,96 @@ export function ForumProvider({ children }: { children: ReactNode }) {
 		}
 	}, [getAuthHeaders]);
 
-	// 获取最新帖子
-	const fetchLatestPosts = useCallback(async (page?: number) => {
+	// 获取最新帖子（支持分页和缓存）
+	const fetchLatestPosts = useCallback(async (page?: number, page_size?: number, useCache: boolean = true) => {
+		// 只有首页（page=1, page_size<=10）才使用缓存
+		const shouldCache = (!page || page === 1) && (!page_size || page_size <= 10);
+		const cacheKey = `${LATEST_POSTS_CACHE_KEY}_${page || 1}_${page_size || 10}`;
+
+		// 尝试从缓存读取
+		if (shouldCache && useCache) {
+			const cached = localStorage.getItem(cacheKey);
+			if (cached) {
+				try {
+					const cachedData: CachedData<{ results: ForumPost[]; count: number; next: string | null; previous: string | null }> = JSON.parse(cached);
+					const now = Date.now();
+					if (now - cachedData.timestamp < CACHE_DURATION) {
+						return cachedData.data;
+					}
+				} catch (e) {
+					console.warn('最新帖子缓存解析失败，从服务器获取');
+				}
+			}
+		}
+
 		try {
-			const url = page
-				? `${API_BASE_URL}/forum/posts/latest/?page=${page}`
-				: `${API_BASE_URL}/forum/posts/latest/`;
-			const response = await axios.get<ForumPost[]>(url);
-			return response.data;
+			const queryParams = new URLSearchParams();
+			if (page) queryParams.append('page', page.toString());
+			if (page_size) queryParams.append('page_size', page_size.toString());
+			
+			const queryString = queryParams.toString();
+			const url = `${API_BASE_URL}/forum/posts/latest/${queryString ? `?${queryString}` : ''}`;
+			const response = await axios.get<{ results: ForumPost[]; count: number; next: string | null; previous: string | null }>(url);
+			const data = response.data;
+
+			// 保存到缓存（仅首页）
+			if (shouldCache) {
+				const cacheData: CachedData<{ results: ForumPost[]; count: number; next: string | null; previous: string | null }> = {
+					data,
+					timestamp: Date.now()
+				};
+				localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+			}
+
+			return data;
 		} catch (err: any) {
 			console.error('获取最新帖子失败:', err);
 			throw err;
 		}
 	}, []);
 
-	// 获取热门帖子
-	const fetchHotPosts = useCallback(async (page?: number) => {
+	// 获取热门帖子（支持分页和缓存）
+	const fetchHotPosts = useCallback(async (page?: number, page_size?: number, useCache: boolean = true) => {
+		// 只有首页（page=1, page_size<=10）才使用缓存
+		const shouldCache = (!page || page === 1) && (!page_size || page_size <= 10);
+		const cacheKey = `${HOT_POSTS_CACHE_KEY}_${page || 1}_${page_size || 10}`;
+
+		// 尝试从缓存读取
+		if (shouldCache && useCache) {
+			const cached = localStorage.getItem(cacheKey);
+			if (cached) {
+				try {
+					const cachedData: CachedData<{ results: ForumPost[]; count: number; next: string | null; previous: string | null }> = JSON.parse(cached);
+					const now = Date.now();
+					if (now - cachedData.timestamp < CACHE_DURATION) {
+						return cachedData.data;
+					}
+				} catch (e) {
+					console.warn('热门帖子缓存解析失败，从服务器获取');
+				}
+			}
+		}
+
 		try {
-			const url = page
-				? `${API_BASE_URL}/forum/posts/hot/?page=${page}`
-				: `${API_BASE_URL}/forum/posts/hot/`;
-			const response = await axios.get<ForumPost[]>(url);
-			return response.data;
+			const queryParams = new URLSearchParams();
+			if (page) queryParams.append('page', page.toString());
+			if (page_size) queryParams.append('page_size', page_size.toString());
+			
+			const queryString = queryParams.toString();
+			const url = `${API_BASE_URL}/forum/posts/hot/${queryString ? `?${queryString}` : ''}`;
+			const response = await axios.get<{ results: ForumPost[]; count: number; next: string | null; previous: string | null }>(url);
+			const data = response.data;
+
+			// 保存到缓存（仅首页）
+			if (shouldCache) {
+				const cacheData: CachedData<{ results: ForumPost[]; count: number; next: string | null; previous: string | null }> = {
+					data,
+					timestamp: Date.now()
+				};
+				localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+			}
+
+			return data;
 		} catch (err: any) {
 			console.error('获取热门帖子失败:', err);
 			throw err;
@@ -462,7 +587,7 @@ export function ForumProvider({ children }: { children: ReactNode }) {
 	// 获取通知列表
 	const fetchNotifications = useCallback(async () => {
 		try {
-			const response = await axios.get<Notification[]>(
+			const response = await axios.get<Notification[] | { results: Notification[]; count: number; next: string | null; previous: string | null }>(
 				`${API_BASE_URL}/forum/notifications/`,
 				{
 					headers: {
@@ -470,7 +595,14 @@ export function ForumProvider({ children }: { children: ReactNode }) {
 					},
 				}
 			);
-			return response.data;
+			// 处理分页格式：如果返回的是分页对象，提取results字段；否则直接返回数组
+			const data = response.data;
+			if (Array.isArray(data)) {
+				return data;
+			} else if (data && typeof data === 'object' && 'results' in data) {
+				return data.results;
+			}
+			return [];
 		} catch (err: any) {
 			console.error('获取通知失败:', err);
 			throw err;

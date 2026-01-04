@@ -66,8 +66,12 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
             setLoading(true);
             setError(null);
 
-            const response = await axios.get<Category[]>(`${API_BASE_URL}/news_api/categories/`);
-            const data = response.data;
+            const response = await axios.get(`${API_BASE_URL}/news_api/categories/`);
+            // 处理分页响应：如果返回的是分页对象，从 results 字段获取数据；否则直接使用 data
+            const responseData = response.data;
+            const data = Array.isArray(responseData) 
+                ? responseData 
+                : (responseData.results || []);
 
             setCategories(data);
 

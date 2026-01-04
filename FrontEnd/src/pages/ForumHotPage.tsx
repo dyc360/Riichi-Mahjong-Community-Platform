@@ -95,12 +95,15 @@ export default function ForumHotPage() {
 	const currentPage = parseInt(searchParams.get('page') || '1', 10) || 1;
 	const postsPerPage = 10;
 
+	const [totalCount, setTotalCount] = useState(0);
+
 	useEffect(() => {
 		const fetchHotPostsData = async () => {
 			try {
 				setLoading(true);
-				const postsData = await fetchHotPosts(currentPage);
-				setPosts(postsData);
+				const result = await fetchHotPosts(currentPage, postsPerPage);
+				setPosts(result.results);
+				setTotalCount(result.count);
 			} catch (error) {
 				console.error('获取热门帖子失败:', error);
 			} finally {
@@ -109,18 +112,16 @@ export default function ForumHotPage() {
 		};
 
 		fetchHotPostsData();
-	}, [currentPage, fetchHotPosts]);
+	}, [currentPage, fetchHotPosts, postsPerPage]);
 
 	const handlePageChange = (page: number) => {
-		if (page < 1 || page > Math.ceil(posts.length / postsPerPage)) return;
+		if (page < 1 || page > Math.ceil(totalCount / postsPerPage)) return;
 		navigate(`?page=${page}`, { replace: true });
 		window.scrollTo(0, 0);
 	};
 
-	const totalPages = Math.ceil(posts.length / postsPerPage);
-	const indexOfLastPost = currentPage * postsPerPage;
-	const indexOfFirstPost = indexOfLastPost - postsPerPage;
-	const currentPosts = posts.slice(indexOfFirstPost, indexOfLastPost);
+	const totalPages = Math.ceil(totalCount / postsPerPage);
+	const currentPosts = posts;
 
 	const handleGoBack = () => {
 		navigate(-1);

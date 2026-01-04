@@ -201,8 +201,8 @@ export default function CreatePostPage() {
 		setIsSearchingPosts(true);
 		try {
 			// 获取最新帖子列表
-			const posts = await fetchPosts({ sort: 'latest', page: 1 });
-			const filtered = posts.filter(post =>
+			const postsResponse = await fetchPosts({ sort: 'latest', page: 1, page_size: 50 });
+			const filtered = postsResponse.results.filter(post =>
 				post.title.toLowerCase().includes(query.toLowerCase())
 			).slice(0, 10); // 最多显示10个结果
 			setPostSearchResults(filtered);
@@ -636,7 +636,10 @@ export default function CreatePostPage() {
 												setContent={(content) => setFormData(prev => ({ ...prev, content }))}
 												textareaRef={contentTextareaRef}
 												imageInputRef={imageInputRef}
-												fetchPosts={fetchPosts}
+												fetchPosts={async (params?: any) => {
+													const result = await fetchPosts(params);
+													return result.results;
+												}}
 											/>
 										)}
 

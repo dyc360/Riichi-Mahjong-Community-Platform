@@ -1,130 +1,123 @@
-import { Link, useLocation } from 'react-router-dom'
-import { HomePageHeader, PracticeCard, MainNavigation } from '../components/homePageComp'
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { HomePageHeader, MainNavigation } from '../components/homePageComp';
 
-// Mock data for practice problems
-const PRACTICE_PROBLEMS = [
-  { id: 1, title: "基础牌效 - 平和型", type: "牌效率何切", difficulty: "Easy", status: "Unsolved" },
-  { id: 2, title: "何切300问 - Q28", type: "何切300", difficulty: "Hard", status: "Solved" },
-  { id: 3, title: "清一色多面听 - 1", type: "清一色训练", difficulty: "Hard", status: "Unsolved" },
-  { id: 4, title: "牌效率 - 进张最大化", type: "牌效率何切", difficulty: "Medium", status: "Unsolved" },
-  { id: 5, title: "基础牌效 - 断幺九", type: "牌效率何切", difficulty: "Easy", status: "Solved" },
-  { id: 6, title: "何切300问 - Q5", type: "何切300", difficulty: "Medium", status: "Unsolved" },
-  { id: 7, title: "手牌算点 - 满贯确定", type: "手牌算点", difficulty: "Medium", status: "Unsolved" },
-  { id: 8, title: "何切300问 - Q1", type: "何切300", difficulty: "Medium", status: "Unsolved" },
-  { id: 9, title: "清一色 - 连号型", type: "清一色训练", difficulty: "Medium", status: "Unsolved" },
-  { id: 10, title: "手牌算点 - 符数计算", type: "手牌算点", difficulty: "Hard", status: "Unsolved" },
-]
+// 定义练习数据，方便管理
+const practiceModes = [
+  {
+    id: 'points',
+    title: "手牌算点",
+    description: "计算给出的手牌的点数，提升算分速度与准确度。",
+    difficulty: "Medium",
+    count: 85,
+    link: "/practice/point-calculation",
+    themeColor: "bg-blue-500", // 卡片顶部的装饰色条
+    badgeColor: "text-blue-700 bg-blue-50 dark:text-blue-300 dark:bg-blue-900/30"
+  },
+  {
+    id: 'chinitsu',
+    title: "清一色何切",
+    description: "针对清一色多面听和复杂牌型的专项特训。",
+    difficulty: "Hard",
+    count: 40,
+    link: "/practice/chinitsu-calculation",
+    themeColor: "bg-rose-500",
+    badgeColor: "text-rose-700 bg-rose-50 dark:text-rose-300 dark:bg-rose-900/30"
+  },
+  {
+    id: 'naze300',
+    title: "何切 300",
+    description: "来自《何切300问》的精选题目，涵盖多种复杂局面。",
+    difficulty: "Medium",
+    count: 300,
+    link: "/practice/naze300",
+    themeColor: "bg-indigo-600",
+    badgeColor: "text-indigo-700 bg-indigo-50 dark:text-indigo-300 dark:bg-indigo-900/30",
+    isRecommended: true
+  },
+  {
+    id: 'efficiency',
+    title: "牌效率何切",
+    description: "牌效基础练习，学习如何最大化进张概率。",
+    difficulty: "Easy",
+    count: 150,
+    link: "/practice/efficiency-calculation",
+    themeColor: "bg-emerald-500",
+    badgeColor: "text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-900/30"
+  }
+];
 
 export default function PracticePage() {
   return (
-    <>
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <HomePageHeader />
       
-      {/* 导航栏 */}
-      <nav className="container mx-auto px-4 py-4 border-b border-gray-200 dark:border-slate-700">
-        <MainNavigation />
+      {/* 导航栏：增加 sticky 效果方便操作 */}
+      <nav className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-gray-200 dark:border-slate-800">
+        <div className="container mx-auto px-4 py-3">
+          <MainNavigation />
+        </div>
       </nav>
 
-      <main className="container mx-auto px-4 py-8">
-        {/* 题库入口 */}
-        <section className="mb-12">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">选择练习模式</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <PracticeCard 
-                title="手牌算点" 
-                description="计算给出的手牌的点数，提升算分速度。" 
-                difficulty="Medium" 
-                count={85} 
-                link="/practice/point-calculation"
-            />
-            <PracticeCard 
-                title="清一色何切" 
-                description="针对清一色的牌效率何切练习。" 
-                difficulty="Hard" 
-                count={40} 
-                link="/practice/chinitsu-calculation"
-            />
-            <PracticeCard 
-                title="何切300" 
-                description="来自《何切300问》的精选题目，涵盖多种复杂局面。" 
-                difficulty="Medium" 
-                count={300} 
-                link="/practice/naze300"
-            />
-            <PracticeCard 
-                title="牌效率何切" 
-                description="牌效练习，学习如何最大化进张。" 
-                difficulty="Easy" 
-                link="/practice/efficiency-calculation"
-                count={150} 
-            />
-          </div>
-        </section>
+      <main className="container mx-auto px-4 py-10 max-w-6xl">
+        {/* 页面标题区 */}
+        <div className="mb-10">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+            练习模式
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400">
+            选择一个专项进行针对性训练，提升麻将水平。
+          </p>
+        </div>
 
-        {/* 热门挑战 */}
-        <section>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">热门挑战</h2>
-            <Link to="#" className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">查看更多 →</Link>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-            <div className="divide-y divide-gray-200 dark:divide-slate-700">
-              {PRACTICE_PROBLEMS.slice(0, 5).map(problem => (
-                <div key={problem.id} className="p-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-500 shrink-0">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{problem.title}</h4>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          problem.difficulty === 'Easy' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                          problem.difficulty === 'Medium' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        }`}>
-                          {problem.difficulty}
-                        </span>
-                        <span className="text-xs text-slate-500 dark:text-slate-400">{problem.type}</span>
-                      </div>
-                    </div>
-                  </div>
+        {/* 卡片列表 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {practiceModes.map((mode) => (
+            <Link 
+              key={mode.id}
+              to={mode.link}
+              className="group relative flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+            >
+              {/* 顶部彩色装饰条 */}
+              <div className={`h-1.5 w-full ${mode.themeColor}`} />
+
+              <div className="p-6 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-4">
+                  {/* 难度标签 */}
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-md ${mode.badgeColor}`}>
+                    {mode.difficulty}
+                  </span>
                   
-                  <button className="px-4 py-2 rounded-lg text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 transition-colors">
-                    开始
-                  </button>
+                  {/* 推荐标记 (仅何切300显示) */}
+                  {mode.isRecommended && (
+                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded border border-indigo-100 dark:border-indigo-800">
+                      推荐
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </main>
-    </>
-  )
-}
 
-// Reusing NavItem component
-const NavItem = ({ 
-  label, 
-  path 
-}: { 
-  label: string; 
-  path: string 
-}) => {
-  const location = useLocation();
-  const isActive = location.pathname === path;
-  
-  return (
-    <Link 
-      to={path}
-      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-        ${isActive 
-          ? 'bg-indigo-500 text-white' 
-          : 'text-slate-800 hover:bg-slate-200 dark:text-slate-200 dark:hover:bg-slate-700'
-        }`}
-    >
-      {label}
-    </Link>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  {mode.title}
+                </h3>
+                
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6 flex-grow">
+                  {mode.description}
+                </p>
+
+                {/* 底部信息 */}
+                <div className="pt-4 border-t border-gray-100 dark:border-slate-700/50 flex items-center justify-between text-sm">
+                  <span className="text-slate-400 font-mono">
+                    {mode.count} 题
+                  </span>
+                  <span className="text-slate-900 dark:text-white font-medium group-hover:translate-x-1 transition-transform">
+                    开始 →
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </main>
+    </div>
   );
-};
+}

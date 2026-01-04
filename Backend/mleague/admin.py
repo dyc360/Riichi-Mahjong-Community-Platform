@@ -6,6 +6,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from .models import TeamRanking, Match, TeamPlayerStats, PointsData
+from auth_api.admin_site import admin_site
 import json
 
 
@@ -19,16 +20,36 @@ class TeamRankingAdmin(admin.ModelAdmin):
     ordering = ['season', 'rank']
     
     def has_add_permission(self, request):
-        """禁止添加"""
+        """只有content_manager和super_admin可以添加"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
     
     def has_change_permission(self, request, obj=None):
-        """禁止修改"""
+        """只有content_manager和super_admin可以修改"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
     
     def has_delete_permission(self, request, obj=None):
-        """禁止删除"""
+        """只有content_manager和super_admin可以删除"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
+
+    def has_view_permission(self, request, obj=None):
+        """content_manager和super_admin可以查看"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator']).exists() or request.user.is_staff
 
 
 @admin.register(Match)
@@ -81,16 +102,36 @@ class MatchAdmin(admin.ModelAdmin):
     result_formatted.short_description = '比赛结果'
     
     def has_add_permission(self, request):
-        """禁止添加"""
+        """只有content_manager和super_admin可以添加"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
     
     def has_change_permission(self, request, obj=None):
-        """禁止修改"""
+        """只有content_manager和super_admin可以修改"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
     
     def has_delete_permission(self, request, obj=None):
-        """禁止删除"""
+        """只有content_manager和super_admin可以删除"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
+
+    def has_view_permission(self, request, obj=None):
+        """content_manager和super_admin可以查看"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator']).exists() or request.user.is_staff
 
 
 @admin.register(TeamPlayerStats)
@@ -124,16 +165,36 @@ class TeamPlayerStatsAdmin(admin.ModelAdmin):
     players_formatted.short_description = '选手数据详情'
     
     def has_add_permission(self, request):
-        """禁止添加"""
+        """只有content_manager和super_admin可以添加"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
     
     def has_change_permission(self, request, obj=None):
-        """禁止修改"""
+        """只有content_manager和super_admin可以修改"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
     
     def has_delete_permission(self, request, obj=None):
-        """禁止删除"""
+        """只有content_manager和super_admin可以删除"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
+
+    def has_view_permission(self, request, obj=None):
+        """content_manager和super_admin可以查看"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator']).exists() or request.user.is_staff
 
 
 @admin.register(PointsData)
@@ -171,13 +232,82 @@ class PointsDataAdmin(admin.ModelAdmin):
     team_data_formatted.short_description = '积分数据详情'
     
     def has_add_permission(self, request):
-        """禁止添加"""
+        """只有content_manager和super_admin可以添加"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
     
     def has_change_permission(self, request, obj=None):
-        """禁止修改"""
+        """只有content_manager和super_admin可以修改"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
     
     def has_delete_permission(self, request, obj=None):
-        """禁止删除"""
+        """只有content_manager和super_admin可以删除"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
         return False
+
+    def has_view_permission(self, request, obj=None):
+        """content_manager和super_admin可以查看"""
+        if request.user.is_superuser:
+            return True
+        if request.user.role and request.user.role.name in ['content_manager', 'super_admin']:
+            return True
+        return request.user.groups.filter(name__in=['moderator']).exists() or request.user.is_staff
+
+
+
+# 在模块加载完成后，将模型注册到自定义admin_site
+from django.apps import apps
+from django.core.management import execute_from_command_line
+import sys
+
+def register_to_custom_admin():
+    from auth_api.admin_site import admin_site
+    # 取消默认注册
+    try:
+        admin.site.unregister(TeamRanking)
+    except admin.sites.NotRegistered:
+        pass
+    try:
+        admin.site.unregister(Match)
+    except admin.sites.NotRegistered:
+        pass
+    try:
+        admin.site.unregister(TeamPlayerStats)
+    except admin.sites.NotRegistered:
+        pass
+    try:
+        admin.site.unregister(PointsData)
+    except admin.sites.NotRegistered:
+        pass
+    # 注册到自定义admin_site
+    admin_site.register(TeamRanking, TeamRankingAdmin)
+    admin_site.register(Match, MatchAdmin)
+    admin_site.register(TeamPlayerStats, TeamPlayerStatsAdmin)
+    admin_site.register(PointsData, PointsDataAdmin)
+
+# 检查是否在迁移模式
+is_migration = 'migrate' in sys.argv or 'makemigrations' in sys.argv
+
+# 如果Django已经准备好且不在迁移模式，立即注册
+if apps.ready and not is_migration:
+    register_to_custom_admin()
+elif not is_migration:
+    # 否则在app ready时注册
+    from django.apps.config import AppConfig
+    original_ready = AppConfig.ready
+    def custom_ready(self):
+        result = original_ready(self)
+        if self.name == "mleague":
+            register_to_custom_admin()
+        return result
+    AppConfig.ready = custom_ready
